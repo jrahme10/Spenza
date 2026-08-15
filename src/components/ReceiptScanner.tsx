@@ -5,6 +5,7 @@ import type { Currency } from '../lib/db'
 import './ReceiptScanner.css'
 
 type Props = {
+  preferredCurrency?: Currency
   onResult: (result: { amount: number; currency?: Currency; merchant?: string; rawText: string }) => void
 }
 
@@ -29,32 +30,53 @@ function parseNumber(raw: string): number | null {
   return Number.isFinite(number) && number > 0 ? number : null
 }
 
-function findTotal(text: string): number | null {
-  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
-  const amountPattern = /(?:USD|LBP|US\$|\$)?\s*([0-9]{1,3}(?:[.,\s][0-9]{3})*(?:[.,][0-9]{2})|[0-9]+(?:[.,][0-9]{2})?)/gi
-  const priority = lines.filter(line => /\b(grand\s*total|total\s*due|amount\s*due|balance\s*due|net\s*total|total)\b/i.test(line) && !/subtotal|tax|vat|change|tender/i.test(line))
-  const amountsFrom = (source: string[]) => source.flatMap(line => {
-    const values: number[] = []
-    for (const match of line.matchAll(amountPattern)) {
+const amountToken = '[0-9]{1,3}(?:[.,\\s][0-9]{3})*(?:[.,][0-9]{2})|[0-9]+(?:[.,][0-9]{2})?'
+
+function currencyAmounts(line: string, currency: Currency): number[] {
+  const patterns = currency === 'USD'
+    ? [new RegExp(`(?:US\\$|USD|\\$)\\s*(${amountToken})`, 'gi'), new RegExp(`(${amountToken})\\s*(?:USD|US\\$)`, 'gi')]
+    : [
+        new RegExp(`(?:LBP|L\\.?L\\.?|LL|ل\\.?ل\\.?)\\s*(${amountToken})`, 'gi'),
+        new RegExp(`(${amountToken})\\s*(?:LBP|L\\.?L\\.?|LL|ل\\.?ل\\.?)`, 'gi'),
+      ]
+  const values: number[] = []
+  for (const pattern of patterns) {
+    for (const match of line.matchAll(pattern)) {
       const n = parseNumber(match[1])
       if (n !== null) values.push(n)
     }
-    return values
-  })
-  const preferred = amountsFrom(priority)
-  if (preferred.length) return Math.max(...preferred)
-  const currencyLines = lines.filter(line => /USD|LBP|US\$|\$/i.test(line))
-  const currencyAmounts = amountsFrom(currencyLines)
-  if (currencyAmounts.length) return Math.max(...currencyAmounts)
-  const all = amountsFrom(lines).filter(n => n < 1_000_000_000)
-  return all.length ? Math.max(...all) : null
+  }
+  return values
 }
 
-function findCurrency(text: string): Currency | undefined {
-  const upper = text.toUpperCase()
-  if (/\bLBP\b|L\.L\.|L\.L|LEBANESE\s+POUND|ل\.ل/.test(upper)) return 'LBP'
-  if (/\bUSD\b|US\$|\$|US DOLLAR/.test(upper)) return 'USD'
-  return undefined
+function findCurrencyTotals(text: string): Partial<Record<Currency, number>> {
+  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+  const priority = lines.filter(line => /\b(grand\s*total|total\s*due|amount\s*due|balance\s*due|net\s*total|total)\b/i.test(line) && !/subtotal|tax|vat|change|tender/i.test(line))
+  const source = priority.length ? priority : lines
+  const totals: Partial<Record<Currency, number>> = {}
+
+  for (const currency of ['USD', 'LBP'] as Currency[]) {
+    const candidates = source.flatMap(line => currencyAmounts(line, currency))
+    if (candidates.length) {
+      // A receipt may repeat the payable total. The largest same-currency value on total lines
+      // is generally the final amount, but USD and LBP are never compared with each other.
+      totals[currency] = Math.max(...candidates)
+    }
+  }
+  return totals
+}
+
+function findUnlabelledTotal(text: string): number | null {
+  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+  const priority = lines.filter(line => /\b(grand\s*total|total\s*due|amount\s*due|balance\s*due|net\s*total|total)\b/i.test(line) && !/subtotal|tax|vat|change|tender/i.test(line))
+  const values: number[] = []
+  for (const line of priority) {
+    for (const match of line.matchAll(new RegExp(`(${amountToken})`, 'g'))) {
+      const n = parseNumber(match[1])
+      if (n !== null) values.push(n)
+    }
+  }
+  return values.length ? Math.max(...values) : null
 }
 
 function findMerchant(text: string): string | undefined {
@@ -62,7 +84,7 @@ function findMerchant(text: string): string | undefined {
   return lines.find(line => /[A-Za-z]{3}/.test(line) && line.length >= 3 && line.length <= 48 && !/receipt|invoice|tax|vat|date|time|tel|phone|total/i.test(line))
 }
 
-export default function ReceiptScanner({ onResult }: Props) {
+export default function ReceiptScanner({ preferredCurrency, onResult }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [status, setStatus] = useState<'idle'|'scanning'|'done'|'error'>('idle')
   const [progress, setProgress] = useState(0)
@@ -82,18 +104,35 @@ export default function ReceiptScanner({ onResult }: Props) {
       })
       const result = await worker.recognize(file)
       const rawText = result.data.text || ''
-      const total = findTotal(rawText)
+      const totals = findCurrencyTotals(rawText)
+
+      let currency: Currency | undefined
+      let total: number | null = null
+      if (preferredCurrency && totals[preferredCurrency]) {
+        currency = preferredCurrency
+        total = totals[preferredCurrency]!
+      } else if (totals.USD) {
+        currency = 'USD'
+        total = totals.USD
+      } else if (totals.LBP) {
+        currency = 'LBP'
+        total = totals.LBP
+      } else {
+        total = findUnlabelledTotal(rawText)
+      }
+
       if (!total) {
         setStatus('error')
         setMessage('I could not confidently find the total. Try a clearer photo or enter the amount manually.')
         return
       }
-      const currency = findCurrency(rawText)
+
       const merchant = findMerchant(rawText)
       onResult({ amount: total, currency, merchant, rawText })
       setStatus('done')
       setProgress(100)
-      setMessage(`Found ${currency ?? 'receipt'} total: ${total.toLocaleString()}. Please review it before saving.`)
+      const label = currency ? `${currency} ${total.toLocaleString()}` : total.toLocaleString()
+      setMessage(`Found total: ${label}. Please review it before saving.`)
     } catch (error) {
       console.error('Receipt scan failed', error)
       setStatus('error')
@@ -108,7 +147,7 @@ export default function ReceiptScanner({ onResult }: Props) {
     <input ref={inputRef} className="receiptInput" type="file" accept="image/*" capture="environment" onChange={e => scan(e.target.files?.[0])}/>
     <button className="receiptButton" type="button" disabled={status==='scanning'} onClick={() => inputRef.current?.click()}>
       <span className="receiptIcon">{status==='scanning'?<LoaderCircle className="spin"/>:status==='done'?<CheckCircle2/>:<Camera/>}</span>
-      <span><b>{status==='scanning'?'Scanning receipt…':'Scan receipt'}</b><small>{status==='scanning'?`${progress}% complete`:'Take a photo or choose an image'}</small></span>
+      <span><b>{status==='scanning'?'Scanning receipt…':'Scan receipt'}</b><small>{status==='scanning'?`${progress}% complete`:preferredCurrency?`Prefer ${preferredCurrency} total for selected wallet`:'Take a photo or choose an image'}</small></span>
       <ReceiptText className="receiptSideIcon"/>
     </button>
     {status!=='idle'&&<div className={`receiptStatus ${status}`}>{message}</div>}
