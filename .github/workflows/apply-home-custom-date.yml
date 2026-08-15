@@ -1,0 +1,69 @@
+name: Apply Home custom date picker
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-home-custom-date.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Home custom date picker
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/App.tsx')
+          s=p.read_text()
+
+          old="type InsightPeriod='daily'|'monthly'|'yearly'"
+          new="type InsightPeriod='daily'|'monthly'|'yearly'\ntype HomePeriod=InsightPeriod|'custom'"
+          assert old in s, 'period type not found'
+          s=s.replace(old,new,1)
+
+          old="const [homePeriod,setHomePeriod]=useState<InsightPeriod>('monthly')"
+          new="const [homePeriod,setHomePeriod]=useState<HomePeriod>('monthly')"
+          assert old in s, 'homePeriod state not found'
+          s=s.replace(old,new,1)
+
+          old="const inHomePeriod=(txDate:string)=>{if(homePeriod==='daily')return txDate===homeDate;if(homePeriod==='monthly')return txDate.slice(0,7)===homeDate.slice(0,7);return txDate.slice(0,4)===homeDate.slice(0,4)}"
+          new="const inHomePeriod=(txDate:string)=>{if(homePeriod==='daily'||homePeriod==='custom')return txDate===homeDate;if(homePeriod==='monthly')return txDate.slice(0,7)===homeDate.slice(0,7);return txDate.slice(0,4)===homeDate.slice(0,4)}"
+          assert old in s, 'home period filter not found'
+          s=s.replace(old,new,1)
+
+          old="const shiftHomePeriod=(direction:number)=>{const d=new Date(`${homeDate}T12:00:00`);if(homePeriod==='daily')d.setDate(d.getDate()+direction);else if(homePeriod==='monthly')d.setMonth(d.getMonth()+direction);else d.setFullYear(d.getFullYear()+direction);setHomeDate(d.toISOString().slice(0,10))}"
+          new="const shiftHomePeriod=(direction:number)=>{const d=new Date(`${homeDate}T12:00:00`);if(homePeriod==='daily'||homePeriod==='custom')d.setDate(d.getDate()+direction);else if(homePeriod==='monthly')d.setMonth(d.getMonth()+direction);else d.setFullYear(d.getFullYear()+direction);setHomeDate(d.toISOString().slice(0,10))}\n const openHomeCustomPicker=()=>{setHomePeriod('custom');setTimeout(()=>{const input=document.getElementById('home-custom-date') as HTMLInputElement|null;if(input?.showPicker)input.showPicker();else input?.click()},0)}"
+          assert old in s, 'period shifter not found'
+          s=s.replace(old,new,1)
+
+          old="const homePeriodLabel=homePeriod==='daily'?new Date(`${homeDate}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):homePeriod==='monthly'?new Date(`${homeDate.slice(0,7)}-01T12:00:00`).toLocaleDateString('en-US',{month:'long',year:'numeric'}):homeDate.slice(0,4)"
+          new="const homePeriodLabel=homePeriod==='daily'||homePeriod==='custom'?new Date(`${homeDate}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):homePeriod==='monthly'?new Date(`${homeDate.slice(0,7)}-01T12:00:00`).toLocaleDateString('en-US',{month:'long',year:'numeric'}):homeDate.slice(0,4)"
+          assert old in s, 'home period label not found'
+          s=s.replace(old,new,1)
+
+          old="<div className=\"filters refFilters periodFilters\">{(['daily','monthly','yearly'] as InsightPeriod[]).map(p=><button key={p} className={homePeriod===p?'selected':''} onClick={()=>setHomePeriod(p)}>{p}</button>)}</div>"
+          new="<div className=\"filters refFilters periodFilters homePeriodFilters\">{(['daily','monthly','yearly'] as InsightPeriod[]).map(p=><button key={p} className={homePeriod===p?'selected':''} onClick={()=>setHomePeriod(p)}>{p}</button>)}<button className={homePeriod==='custom'?'selected':''} onClick={openHomeCustomPicker}>custom</button><input id=\"home-custom-date\" className=\"homeCustomDateInput\" type=\"date\" value={homeDate} onChange={e=>{setHomeDate(e.target.value);setHomePeriod('custom')}} aria-label=\"Choose custom date\"/></div>"
+          assert old in s, 'home period controls not found'
+          s=s.replace(old,new,1)
+
+          old="setInsightPeriod(homePeriod);setInsightDate(homeDate);setTab('Insights')"
+          new="setInsightPeriod(homePeriod==='custom'?'daily':homePeriod);setInsightDate(homeDate);setTab('Insights')"
+          assert old in s, 'Insights handoff not found'
+          s=s.replace(old,new,1)
+
+          p.write_text(s)
+
+          css=Path('src/spenza-layout.css')
+          c=css.read_text()
+          c += "\n.homePeriodFilters{position:relative}.homeCustomDateInput{position:absolute;width:1px!important;height:1px!important;opacity:0;pointer-events:none;left:50%;bottom:0;padding:0!important;border:0!important}\n"
+          css.write_text(c)
+          PY
+          git config user.name "Spenza Bot"
+          git config user.email "actions@github.com"
+          git add src/App.tsx src/spenza-layout.css
+          git commit -m "Add custom date picker to Home dashboard"
+          git push
