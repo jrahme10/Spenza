@@ -23,6 +23,9 @@ export default function App(){
  const [insightCategory,setInsightCategory]=useState('all')
  const [insightPeriod,setInsightPeriod]=useState<InsightPeriod>('monthly')
  const [insightDate,setInsightDate]=useState(today())
+ const [homeWalletId,setHomeWalletId]=useState('')
+ const [homePeriod,setHomePeriod]=useState<InsightPeriod>('monthly')
+ const [homeDate,setHomeDate]=useState(today())
  const [rateInput,setRateInput]=useState(String(defaultData.usdToLbpRate||89500))
  const [open,setOpen]=useState(false)
  const [editing,setEditing]=useState<string|null>(null)
@@ -41,6 +44,7 @@ export default function App(){
  useEffect(()=>{loadData().then(d=>{setData(d);setRateInput(String(d.usdToLbpRate||89500));setReady(true)}).catch(()=>setReady(true))},[])
  useEffect(()=>{if(ready)saveData(data)},[data,ready])
  useEffect(()=>{if(!insightWalletId&&data.wallets[0])setInsightWalletId(data.wallets[0].id);if(insightWalletId&&!data.wallets.some(w=>w.id===insightWalletId))setInsightWalletId(data.wallets[0]?.id||'')},[data.wallets,insightWalletId])
+ useEffect(()=>{if(!homeWalletId&&data.wallets[0])setHomeWalletId(data.wallets[0].id);if(homeWalletId&&!data.wallets.some(w=>w.id===homeWalletId))setHomeWalletId(data.wallets[0]?.id||'')},[data.wallets,homeWalletId])
  const rate=data.usdToLbpRate||89500
  const convert=(value:number,from:Currency,to:Currency)=>from===to?value:from==='USD'?value*rate:value/rate
  const normalize=(value:number,currency:Currency)=>currency==='LBP'?Math.round(value):Math.round(value*100)/100
@@ -79,13 +83,17 @@ export default function App(){
  const insightTransfers=insightTransactions.filter(t=>t.type==='transfer').reduce((sum,t)=>sum+t.amount,0)
  const insightPeriodLabel=insightPeriod==='daily'?insightDate:insightPeriod==='monthly'?new Date(`${insightDate.slice(0,7)}-01T00:00:00`).toLocaleDateString('en-US',{month:'long',year:'numeric'}):insightDate.slice(0,4)
  const conversionLabel=receiptSource?.currency&&selectedWallet&&receiptSource.currency!==selectedWallet.currency?`${money(receiptSource.amount,receiptSource.currency)} → ${money(Number(amount)||0,selectedWallet.currency)} at 1 USD = ${rate.toLocaleString()} LBP`:null
- const monthKey=today().slice(0,7)
- const monthLabel=new Date(`${monthKey}-01T00:00:00`).toLocaleDateString('en-US',{month:'long',year:'numeric'})
- const homeWallet=data.wallets[0]
- const homeMonthTx=homeWallet?data.transactions.filter(t=>t.walletId===homeWallet.id&&t.date.slice(0,7)===monthKey):[]
- const homeIncome=homeMonthTx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0)
- const homeExpense=homeMonthTx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0)
- const categoryTotals=data.categories.map(c=>({name:c,value:homeMonthTx.filter(t=>t.type==='expense'&&t.category===c).reduce((s,t)=>s+t.amount,0)})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value)
+ const inHomePeriod=(txDate:string)=>{if(homePeriod==='daily')return txDate===homeDate;if(homePeriod==='monthly')return txDate.slice(0,7)===homeDate.slice(0,7);return txDate.slice(0,4)===homeDate.slice(0,4)}
+ const shiftHomePeriod=(direction:number)=>{const d=new Date(`${homeDate}T12:00:00`);if(homePeriod==='daily')d.setDate(d.getDate()+direction);else if(homePeriod==='monthly')d.setMonth(d.getMonth()+direction);else d.setFullYear(d.getFullYear()+direction);setHomeDate(d.toISOString().slice(0,10))}
+ const homePeriodLabel=homePeriod==='daily'?new Date(`${homeDate}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):homePeriod==='monthly'?new Date(`${homeDate.slice(0,7)}-01T12:00:00`).toLocaleDateString('en-US',{month:'long',year:'numeric'}):homeDate.slice(0,4)
+ const homeWallet=data.wallets.find(w=>w.id===homeWalletId)||data.wallets[0]
+ const homePeriodTx=homeWallet?data.transactions.filter(t=>(t.walletId===homeWallet.id||t.toWalletId===homeWallet.id)&&inHomePeriod(t.date)):[]
+ const homeIncome=homePeriodTx.filter(t=>t.type==='income'&&t.walletId===homeWallet?.id).reduce((s,t)=>s+t.amount,0)
+ const homeExpense=homePeriodTx.filter(t=>t.type==='expense'&&t.walletId===homeWallet?.id).reduce((s,t)=>s+t.amount,0)
+ const homeTransferOut=homePeriodTx.filter(t=>t.type==='transfer'&&t.walletId===homeWallet?.id).reduce((s,t)=>s+t.amount,0)
+ const homeTransferIn=homePeriodTx.filter(t=>t.type==='transfer'&&t.toWalletId===homeWallet?.id).reduce((s,t)=>s+(t.exchangeRate?t.amount*t.exchangeRate:t.amount),0)
+ const homeNet=homeIncome-homeExpense-homeTransferOut+homeTransferIn
+ const categoryTotals=data.categories.map(c=>({name:c,value:homePeriodTx.filter(t=>t.type==='expense'&&t.walletId===homeWallet?.id&&t.category===c).reduce((s,t)=>s+t.amount,0)})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value)
  const categoryTotal=categoryTotals.reduce((s,x)=>s+x.value,0)
  let running=0
  const gradientParts=categoryTotals.slice(0,5).map((x,i)=>{const start=categoryTotal?running/categoryTotal*100:0;running+=x.value;const end=categoryTotal?running/categoryTotal*100:0;return `${palette[i%palette.length]} ${start}% ${end}%`})
@@ -94,13 +102,15 @@ export default function App(){
  return <div className="shell"><main className="phone reference-layout">
   {tab==='Home'&&<section className="homeScreen">
    <header className="refHeader"><div><span className="eyebrow">SPENZA</span><h1>Good Morning! 👋</h1></div><button className="round" aria-label="Notifications"><Bell size={18}/></button></header>
-   <section className="monthCard"><button><ChevronLeft/></button><div><b>{monthLabel}</b><span>{homeWallet?`${homeWallet.name} balance`:'Your monthly overview'}</span><strong>{homeWallet?money(walletBalance(homeWallet.id),homeWallet.currency):'—'}</strong></div><button><ChevronRight/></button></section>
+   <div className="filters refFilters periodFilters">{(['daily','monthly','yearly'] as InsightPeriod[]).map(p=><button key={p} className={homePeriod===p?'selected':''} onClick={()=>setHomePeriod(p)}>{p}</button>)}</div>
+   {data.wallets.length&&<div className="insightSelectors homeAccountSelector"><label>Account<select value={homeWallet?.id||''} onChange={e=>setHomeWalletId(e.target.value)}>{data.wallets.map(w=><option key={w.id} value={w.id}>{w.name} ({w.currency})</option>)}</select></label></div>}
+   <section className="monthCard"><button onClick={()=>shiftHomePeriod(-1)} aria-label="Previous period"><ChevronLeft/></button><div><b>{homePeriodLabel}</b><span>{homeWallet?`${homeWallet.name} · ${homePeriod} net`:`${homePeriod} overview`}</span><strong>{homeWallet?money(homeNet,homeWallet.currency):'—'}</strong></div><button onClick={()=>shiftHomePeriod(1)} aria-label="Next period"><ChevronRight/></button></section>
    <div className="refSectionHead"><h2>Accounts</h2><button onClick={()=>setTab('Wallets')}>See All</button></div>
-   {data.wallets.length?<div className="accountRail">{data.wallets.slice(0,4).map((w,i)=><button className={`accountTile accountTone${i%4}`} key={w.id} onClick={()=>openWalletActivity(w.id)}><div><b>{w.name}</b><span>{w.currency}</span></div><strong>{money(walletBalance(w.id),w.currency)}</strong></button>)}</div>:<button className="emptyWalletCta" onClick={addWallet}><WalletCards/><span><b>Create your first wallet</b><small>Add cash, bank, or card balances before recording expenses.</small></span></button>}
-   <div className="refSectionHead"><h2>{monthLabel.split(' ')[0]} Overview</h2><button onClick={()=>setTab('Insights')}>See All</button></div>
-   <div className="overviewGrid"><article className="overviewIncome"><span>Total Income</span><strong>{homeWallet?money(homeIncome,homeWallet.currency):'—'}</strong><small>{homeWallet?`${money(Math.max(homeIncome-homeExpense,0),homeWallet.currency)} left`:'Create a wallet first'}</small></article><article><span>Top Categories</span>{categoryTotals.slice(0,3).length?categoryTotals.slice(0,3).map(x=><div className="miniCategory" key={x.name}><span>{x.name}</span><b>{money(x.value,homeWallet?.currency||'USD')}</b></div>):<small>No spending yet</small>}</article></div>
+   {data.wallets.length?<div className="accountRail">{data.wallets.slice(0,4).map((w,i)=><button className={`accountTile accountTone${i%4}${homeWallet?.id===w.id?' selectedAccount':''}`} key={w.id} onClick={()=>setHomeWalletId(w.id)}><div><b>{w.name}</b><span>{w.currency}</span></div><strong>{money(walletBalance(w.id),w.currency)}</strong></button>)}</div>:<button className="emptyWalletCta" onClick={addWallet}><WalletCards/><span><b>Create your first wallet</b><small>Add cash, bank, or card balances before recording expenses.</small></span></button>}
+   <div className="refSectionHead"><h2>{homePeriodLabel} Overview</h2><button onClick={()=>{if(homeWallet)setInsightWalletId(homeWallet.id);setInsightPeriod(homePeriod);setInsightDate(homeDate);setTab('Insights')}}>See All</button></div>
+   <div className="overviewGrid"><article className="overviewIncome"><span>Total Income</span><strong>{homeWallet?money(homeIncome,homeWallet.currency):'—'}</strong><small>{homeWallet?`Expenses ${money(homeExpense,homeWallet.currency)}`:'Create a wallet first'}</small></article><article><span>Top Categories</span>{categoryTotals.slice(0,3).length?categoryTotals.slice(0,3).map(x=><div className="miniCategory" key={x.name}><span>{x.name}</span><b>{money(x.value,homeWallet?.currency||'USD')}</b></div>):<small>No spending yet</small>}</article></div>
    <article className="categoryPanel"><div className="refSectionHead compact"><h2>Expenses by Category</h2></div><div className="categoryChart"><div className="donut" style={{background:donutBackground}}><i/></div><div className="legend">{categoryTotals.slice(0,5).map((x,i)=><div key={x.name}><span><i style={{background:palette[i%palette.length]}}/>{x.name}</span><b>{categoryTotal?Math.round(x.value/categoryTotal*100):0}%</b></div>)}{!categoryTotals.length&&<small>No expense data yet</small>}</div></div></article>
-   <section className="activity homeActivity"><div className="refSectionHead"><h2>Recent Transactions</h2><button onClick={openAllActivity}>See All</button></div>{data.transactions.length?data.transactions.slice(0,4).map(t=><TxRow t={t} key={t.id}/>):<div className="empty compact">No transactions yet.</div>}</section>
+   <section className="activity homeActivity"><div className="refSectionHead"><h2>Recent Transactions</h2><button onClick={openAllActivity}>See All</button></div>{homePeriodTx.length?homePeriodTx.slice(0,4).map(t=><TxRow t={t} key={t.id}/>):<div className="empty compact">No transactions for this account and period.</div>}</section>
   </section>}
   {tab==='Activity'&&<section className="page refPage"><div className="centerPageHead"><h1>{activityWallet?.name||'Transactions'}</h1></div>{activityWallet&&<div className="accountSummary"><span>{activityWallet.currency} balance</span><strong>{money(walletBalance(activityWallet.id),activityWallet.currency)}</strong></div>}<div className="filters refFilters"><button className={!activityWalletId?'selected':''} onClick={()=>setActivityWalletId(null)}>All</button><button onClick={()=>{resetForm();setType('income');setOpen(true)}}>Income</button><button onClick={()=>{resetForm();setType('expense');setOpen(true)}}>Expense</button><button onClick={()=>{resetForm();setType('transfer');setOpen(true)}}>Transfer</button></div><div className="groupedTransactions">{Object.entries(activityGroups).map(([d,items])=><section key={d}><h3>{d===today()?'Today':new Date(`${d}T00:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</h3>{items.map(t=><TxRow t={t} key={t.id}/>)}</section>)}{!activityTransactions.length&&<div className="empty">No transactions yet.</div>}</div></section>}
   {tab==='Wallets'&&<section className="page refPage"><div className="centerPageHead withAction"><h1>Accounts</h1><button className="iconAdd" onClick={addWallet}><Plus/></button></div>{data.wallets.length?<div className="walletGrid refWalletGrid">{data.wallets.map((w,i)=><article className={`accountTone${i%4}`} key={w.id}><div className="walletCardTop"><span>{w.currency}</span><div className="walletActions"><button className="walletEdit" onClick={()=>editWallet(w)}><Pencil/></button><button className="walletDelete" onClick={()=>deleteWallet(w.id)}><Trash2/></button></div></div><h2 onClick={()=>openWalletActivity(w.id)}>{w.name}</h2><strong onClick={()=>openWalletActivity(w.id)}>{money(walletBalance(w.id),w.currency)}</strong><small>Opening {money(w.openingBalance,w.currency)}</small></article>)}</div>:<div className="empty">No accounts yet.</div>}</section>}
