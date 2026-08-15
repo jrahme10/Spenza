@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import { initTheme } from './components/ThemeControl'
+import { initDynamicGreeting } from './dynamic-greeting'
 import './styles.css'
 import './transaction-polish.css'
 import './exchange.css'
@@ -22,4 +23,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 )
 
+initDynamicGreeting()
 registerPwa()
