@@ -19,6 +19,7 @@ export type Transaction = {
   exchangeRate?: number
   date: string
   note?: string
+  noteImages?: string[]
   createdAt: string
   updatedAt: string
 }
