@@ -1,0 +1,6 @@
+/* Keep the primary Add action geometrically centered regardless of nav item count. */
+.reference-layout nav{position:fixed!important;display:flex!important;justify-content:space-around!important;align-items:center!important}
+.reference-layout nav .addNav{position:absolute!important;left:50%!important;transform:translateX(-50%)!important;z-index:3!important}
+.reference-layout nav .addNav svg{margin-top:-22px!important}
+/* Reserve breathing room around the centered action so adjacent tabs do not collide with it. */
+.reference-layout nav button:not(.addNav){flex:1 1 0!important;max-width:72px!important}
