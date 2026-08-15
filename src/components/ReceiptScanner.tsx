@@ -54,14 +54,9 @@ function findCurrencyTotals(text: string): Partial<Record<Currency, number>> {
   const priority = lines.filter(line => /\b(grand\s*total|total\s*due|amount\s*due|balance\s*due|net\s*total|total)\b/i.test(line) && !/subtotal|tax|vat|change|tender/i.test(line))
   const source = priority.length ? priority : lines
   const totals: Partial<Record<Currency, number>> = {}
-
   for (const currency of ['USD', 'LBP'] as Currency[]) {
     const candidates = source.flatMap(line => currencyAmounts(line, currency))
-    if (candidates.length) {
-      // A receipt may repeat the payable total. The largest same-currency value on total lines
-      // is generally the final amount, but USD and LBP are never compared with each other.
-      totals[currency] = Math.max(...candidates)
-    }
+    if (candidates.length) totals[currency] = Math.max(...candidates)
   }
   return totals
 }
@@ -82,6 +77,16 @@ function findUnlabelledTotal(text: string): number | null {
 function findMerchant(text: string): string | undefined {
   const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
   return lines.find(line => /[A-Za-z]{3}/.test(line) && line.length >= 3 && line.length <= 48 && !/receipt|invoice|tax|vat|date|time|tel|phone|total/i.test(line))
+}
+
+function selectedWalletCurrency(): Currency | undefined {
+  const sheet = document.querySelector('.sheet')
+  const selects = sheet?.querySelectorAll('select')
+  if (!selects?.length) return undefined
+  const text = (selects[0] as HTMLSelectElement).selectedOptions?.[0]?.textContent?.toUpperCase() || ''
+  if (text.includes('(USD)') || text.includes('USD')) return 'USD'
+  if (text.includes('(LBP)') || text.includes('LBP')) return 'LBP'
+  return undefined
 }
 
 export default function ReceiptScanner({ preferredCurrency, onResult }: Props) {
@@ -105,16 +110,28 @@ export default function ReceiptScanner({ preferredCurrency, onResult }: Props) {
       const result = await worker.recognize(file)
       const rawText = result.data.text || ''
       const totals = findCurrencyTotals(rawText)
+      const walletCurrency = preferredCurrency || selectedWalletCurrency()
 
       let currency: Currency | undefined
       let total: number | null = null
-      if (preferredCurrency && totals[preferredCurrency]) {
-        currency = preferredCurrency
-        total = totals[preferredCurrency]!
-      } else if (totals.USD) {
+
+      // Critical rule: if the receipt prints both currencies, always use the value
+      // that matches the selected wallet. Never compare USD and LBP numerically.
+      if (walletCurrency && totals[walletCurrency] != null) {
+        currency = walletCurrency
+        total = totals[walletCurrency]!
+      } else if (totals.USD != null && totals.LBP == null) {
         currency = 'USD'
         total = totals.USD
-      } else if (totals.LBP) {
+      } else if (totals.LBP != null && totals.USD == null) {
+        currency = 'LBP'
+        total = totals.LBP
+      } else if (totals.USD != null) {
+        // If no wallet can be resolved and both values exist, prefer USD rather than
+        // accidentally selecting the much larger LBP number.
+        currency = 'USD'
+        total = totals.USD
+      } else if (totals.LBP != null) {
         currency = 'LBP'
         total = totals.LBP
       } else {
@@ -147,7 +164,7 @@ export default function ReceiptScanner({ preferredCurrency, onResult }: Props) {
     <input ref={inputRef} className="receiptInput" type="file" accept="image/*" capture="environment" onChange={e => scan(e.target.files?.[0])}/>
     <button className="receiptButton" type="button" disabled={status==='scanning'} onClick={() => inputRef.current?.click()}>
       <span className="receiptIcon">{status==='scanning'?<LoaderCircle className="spin"/>:status==='done'?<CheckCircle2/>:<Camera/>}</span>
-      <span><b>{status==='scanning'?'Scanning receipt…':'Scan receipt'}</b><small>{status==='scanning'?`${progress}% complete`:preferredCurrency?`Prefer ${preferredCurrency} total for selected wallet`:'Take a photo or choose an image'}</small></span>
+      <span><b>{status==='scanning'?'Scanning receipt…':'Scan receipt'}</b><small>{status==='scanning'?`${progress}% complete`:'Use the total matching the selected wallet'}</small></span>
       <ReceiptText className="receiptSideIcon"/>
     </button>
     {status!=='idle'&&<div className={`receiptStatus ${status}`}>{message}</div>}
