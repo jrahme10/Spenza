@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react'
 import { Camera, CheckCircle2, LoaderCircle, ReceiptText } from 'lucide-react'
 import { createWorker } from 'tesseract.js'
+import type { Currency } from '../lib/db'
 import './ReceiptScanner.css'
 
 type Props = {
-  onResult: (result: { amount: number; merchant?: string; rawText: string }) => void
+  onResult: (result: { amount: number; currency?: Currency; merchant?: string; rawText: string }) => void
 }
 
 function parseNumber(raw: string): number | null {
@@ -30,9 +31,8 @@ function parseNumber(raw: string): number | null {
 
 function findTotal(text: string): number | null {
   const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
-  const amountPattern = /(?:USD|LBP|US\$|\$|€|£)?\s*([0-9]{1,3}(?:[.,\s][0-9]{3})*(?:[.,][0-9]{2})|[0-9]+(?:[.,][0-9]{2})?)/gi
+  const amountPattern = /(?:USD|LBP|US\$|\$)?\s*([0-9]{1,3}(?:[.,\s][0-9]{3})*(?:[.,][0-9]{2})|[0-9]+(?:[.,][0-9]{2})?)/gi
   const priority = lines.filter(line => /\b(grand\s*total|total\s*due|amount\s*due|balance\s*due|net\s*total|total)\b/i.test(line) && !/subtotal|tax|vat|change|tender/i.test(line))
-
   const amountsFrom = (source: string[]) => source.flatMap(line => {
     const values: number[] = []
     for (const match of line.matchAll(amountPattern)) {
@@ -41,16 +41,20 @@ function findTotal(text: string): number | null {
     }
     return values
   })
-
   const preferred = amountsFrom(priority)
   if (preferred.length) return Math.max(...preferred)
-
-  const currencyLines = lines.filter(line => /USD|LBP|US\$|\$|€|£/i.test(line))
+  const currencyLines = lines.filter(line => /USD|LBP|US\$|\$/i.test(line))
   const currencyAmounts = amountsFrom(currencyLines)
   if (currencyAmounts.length) return Math.max(...currencyAmounts)
-
   const all = amountsFrom(lines).filter(n => n < 1_000_000_000)
   return all.length ? Math.max(...all) : null
+}
+
+function findCurrency(text: string): Currency | undefined {
+  const upper = text.toUpperCase()
+  if (/\bLBP\b|L\.L\.|L\.L|LEBANESE\s+POUND|ل\.ل/.test(upper)) return 'LBP'
+  if (/\bUSD\b|US\$|\$|US DOLLAR/.test(upper)) return 'USD'
+  return undefined
 }
 
 function findMerchant(text: string): string | undefined {
@@ -84,11 +88,12 @@ export default function ReceiptScanner({ onResult }: Props) {
         setMessage('I could not confidently find the total. Try a clearer photo or enter the amount manually.')
         return
       }
+      const currency = findCurrency(rawText)
       const merchant = findMerchant(rawText)
-      onResult({ amount: total, merchant, rawText })
+      onResult({ amount: total, currency, merchant, rawText })
       setStatus('done')
       setProgress(100)
-      setMessage(`Found total: ${total.toLocaleString()}. Please review it before saving.`)
+      setMessage(`Found ${currency ?? 'receipt'} total: ${total.toLocaleString()}. Please review it before saving.`)
     } catch (error) {
       console.error('Receipt scan failed', error)
       setStatus('error')
