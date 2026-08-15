@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Camera, CheckCircle2, LoaderCircle, ReceiptText } from 'lucide-react'
 import { createWorker } from 'tesseract.js'
+import './ReceiptScanner.css'
 
 type Props = {
   onResult: (result: { amount: number; merchant?: string; rawText: string }) => void
