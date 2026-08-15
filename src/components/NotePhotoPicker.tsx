@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { Camera, Images, Plus, X } from 'lucide-react'
+import './NotePhotoPicker.css'
 
 type Props = {
   images: string[]
