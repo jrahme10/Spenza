@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Laptop, Moon, Sun } from 'lucide-react'
 
 type ThemePreference='auto'|'dark'|'light'
@@ -27,18 +28,16 @@ export function applyTheme(preference:ThemePreference){
  if(themeMeta)themeMeta.content=resolved==='dark'?'#07101c':'#f5f7fa'
 }
 
-export function initTheme(){
- const preference=initialPreference()
- applyTheme(preference)
- if(preference==='auto'){
-  const media=window.matchMedia('(prefers-color-scheme: dark)')
-  media.addEventListener?.('change',()=>applyTheme('auto'))
- }
+export function initTheme(){applyTheme(initialPreference())}
+
+function findSettingsPage():HTMLElement|null{
+ return [...document.querySelectorAll<HTMLElement>('section.page')].find(section=>section.querySelector('h1')?.textContent?.trim()==='Settings')||null
 }
 
 export default function ThemeControl(){
  const [preference,setPreference]=useState<ThemePreference>(initialPreference)
  const [systemTheme,setSystemTheme]=useState<ResolvedTheme>(getSystemTheme)
+ const [target,setTarget]=useState<HTMLElement|null>(()=>findSettingsPage())
  useEffect(()=>{
   applyTheme(preference)
   const media=window.matchMedia('(prefers-color-scheme: dark)')
@@ -46,7 +45,15 @@ export default function ThemeControl(){
   media.addEventListener?.('change',onChange)
   return()=>media.removeEventListener?.('change',onChange)
  },[preference])
- return <section className="theme-settings-card">
+ useEffect(()=>{
+  const sync=()=>setTarget(findSettingsPage())
+  sync()
+  const observer=new MutationObserver(sync)
+  observer.observe(document.body,{subtree:true,childList:true})
+  return()=>observer.disconnect()
+ },[])
+ if(!target)return null
+ const card=<section className="theme-settings-card">
    <div><span className="eyebrow">APPEARANCE</span><h2>Theme</h2><p>Choose a fixed theme or let Spenza follow your device automatically.</p></div>
    <div className="theme-segmented" role="group" aria-label="Theme preference">
      <button className={preference==='auto'?'selected':''} onClick={()=>setPreference('auto')}><Laptop size={17}/><span>Auto<small>{systemTheme==='dark'?'System dark':'System light'}</small></span></button>
@@ -54,4 +61,5 @@ export default function ThemeControl(){
      <button className={preference==='dark'?'selected':''} onClick={()=>setPreference('dark')}><Moon size={17}/><span>Dark</span></button>
    </div>
  </section>
+ return createPortal(card,target)
 }
