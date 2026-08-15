@@ -7,6 +7,7 @@ import './transaction-polish.css'
 import './exchange.css'
 import './backup.css'
 import './spenza-design.css'
+import './theme-settings.css'
 import { registerPwa } from './lib/pwa'
 
 initTheme()
