@@ -32,16 +32,14 @@ const DB_NAME = 'spenza-db'
 const STORE = 'app-data'
 const KEY = 'spenza'
 
+export const defaultCategories = ['Food', 'Transport', 'Shopping', 'Bills', 'Coffee', 'Entertainment', 'Health', 'Education', 'Travel', 'Salary', 'Other']
+
+// A new install and a reset both start with zero financial data.
+// Categories remain available because they are app configuration, not user transactions/balances.
 export const defaultData: SpenzaData = {
-  wallets: [
-    { id: 'wallet-usd', name: 'Cash USD', currency: 'USD', openingBalance: 2850 },
-    { id: 'wallet-lbp', name: 'Cash LBP', currency: 'LBP', openingBalance: 176365000 },
-  ],
-  categories: ['Food', 'Transport', 'Shopping', 'Bills', 'Coffee', 'Entertainment', 'Health', 'Education', 'Travel', 'Salary', 'Other'],
-  transactions: [
-    { id: 'seed-1', type: 'expense', title: 'Roadster Diner', category: 'Food', amount: 38, walletId: 'wallet-usd', date: new Date().toISOString().slice(0,10), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'seed-2', type: 'expense', title: 'Coffee Factory', category: 'Coffee', amount: 4.5, walletId: 'wallet-usd', date: new Date().toISOString().slice(0,10), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  ],
+  wallets: [],
+  categories: defaultCategories,
+  transactions: [],
 }
 
 function openDb(): Promise<IDBDatabase> {
