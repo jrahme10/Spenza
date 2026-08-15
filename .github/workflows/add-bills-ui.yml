@@ -1,0 +1,57 @@
+name: Integrate Bills UI
+
+on:
+  push:
+    paths:
+      - '.github/workflows/add-bills-ui.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Integrate Bills screen
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          app=Path('src/App.tsx')
+          s=app.read_text()
+
+          old="import { AlertTriangle, ArrowDownLeft, ArrowLeftRight, ArrowUpRight, BarChart3, Bell, Check, ChevronLeft, ChevronRight, CreditCard, Home, Pencil, Plus, Settings, Trash2, WalletCards, X } from 'lucide-react'"
+          new="import { AlertTriangle, ArrowDownLeft, ArrowLeftRight, ArrowUpRight, BarChart3, Bell, CalendarClock, Check, ChevronLeft, ChevronRight, CreditCard, Home, Pencil, Plus, Settings, Trash2, WalletCards, X } from 'lucide-react'"
+          assert old in s, 'lucide import not found'
+          s=s.replace(old,new,1)
+
+          old="import ThemeControl from './components/ThemeControl'"
+          new="import ThemeControl from './components/ThemeControl'\nimport BillsManager from './components/BillsManager'"
+          assert old in s, 'ThemeControl import not found'
+          s=s.replace(old,new,1)
+
+          marker="  {tab==='Settings'&&<section className=\"page refPage settingsPage\""
+          assert marker in s, 'settings render marker not found'
+          s=s.replace(marker,"  {tab==='Bills'&&<BillsManager data={data} setData={setData}/>}\n"+marker,1)
+
+          old="<nav>{[['Home',Home],['Activity',CreditCard],['Add',Plus],['Insights',BarChart3],['Settings',Settings]].map(([label,Icon]:any)=>"
+          new="<nav>{[['Home',Home],['Activity',CreditCard],['Add',Plus],['Bills',CalendarClock],['Insights',BarChart3],['Settings',Settings]].map(([label,Icon]:any)=>"
+          assert old in s, 'nav array not found'
+          s=s.replace(old,new,1)
+
+          app.write_text(s)
+
+          main=Path('src/main.tsx')
+          m=main.read_text()
+          anchor="import './spenza-layout.css'"
+          assert anchor in m, 'main css import anchor not found'
+          if "import './bills.css'" not in m:
+              m=m.replace(anchor,anchor+"\nimport './bills.css'",1)
+          main.write_text(m)
+          PY
+          git config user.name "Spenza Bot"
+          git config user.email "actions@github.com"
+          git add src/App.tsx src/main.tsx
+          git commit -m "Integrate Bills screen into Spenza"
+          git push
