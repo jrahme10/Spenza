@@ -27,9 +27,11 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build
-        run: npm run build -- --base=/expenses_app/
+        run: npm run build -- --base=/Spenza/
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
