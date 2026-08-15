@@ -1,16 +1,36 @@
-# expenses_app
+# Velora Expenses
 
-A new Flutter project.
+Velora is a mobile-first React expense management app designed around a classy, user-friendly interface and a privacy-first local + cloud data model.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- Mobile-first expense dashboard
+- Transactions and wallets
+- Budgets and recurring expenses
+- Categories and subcategories
+- Analytics and insights
+- Offline IndexedDB storage
+- Optional Supabase cloud sync and authentication
+- AI natural-language expense entry
+- AI financial assistant
+- Receipt scanning and voice entry foundations
+- Premium/subscription UI foundation
+- PWA support
+- Supabase migrations, RLS and Edge Function foundation
 
-A few resources to get you started if this is your first Flutter project:
+## Run locally
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+npm install
+npm run dev
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Copy `.env.example` to `.env` and provide your Supabase values when cloud mode is needed.
+
+## GitHub Pages
+
+The included workflow builds and deploys the app to GitHub Pages on pushes to `main`.
+
+## Supabase
+
+Run the SQL migrations in `supabase/migrations` and deploy `supabase/functions/finance-ai` for AI features. Keep private API keys server-side in Supabase secrets, never in the React client.
