@@ -12,6 +12,7 @@ type Dialog={title:string;message:string;kind?:'danger'|'info';confirmLabel?:str
 type WalletForm={id?:string;name:string;currency:Currency;openingBalance:string;originalCurrency?:Currency}
 type ReceiptSource={amount:number;currency?:Currency}
 type InsightPeriod='daily'|'monthly'|'yearly'
+type HomePeriod=InsightPeriod|'custom'
 const palette=['#22d3ae','#7650ea','#2d94ee','#17a9a5','#a150e3']
 
 export default function App(){
@@ -24,7 +25,7 @@ export default function App(){
  const [insightPeriod,setInsightPeriod]=useState<InsightPeriod>('monthly')
  const [insightDate,setInsightDate]=useState(today())
  const [homeWalletId,setHomeWalletId]=useState('')
- const [homePeriod,setHomePeriod]=useState<InsightPeriod>('monthly')
+ const [homePeriod,setHomePeriod]=useState<HomePeriod>('monthly')
  const [homeDate,setHomeDate]=useState(today())
  const [rateInput,setRateInput]=useState(String(defaultData.usdToLbpRate||89500))
  const [open,setOpen]=useState(false)
@@ -83,9 +84,10 @@ export default function App(){
  const insightTransfers=insightTransactions.filter(t=>t.type==='transfer').reduce((sum,t)=>sum+t.amount,0)
  const insightPeriodLabel=insightPeriod==='daily'?insightDate:insightPeriod==='monthly'?new Date(`${insightDate.slice(0,7)}-01T00:00:00`).toLocaleDateString('en-US',{month:'long',year:'numeric'}):insightDate.slice(0,4)
  const conversionLabel=receiptSource?.currency&&selectedWallet&&receiptSource.currency!==selectedWallet.currency?`${money(receiptSource.amount,receiptSource.currency)} → ${money(Number(amount)||0,selectedWallet.currency)} at 1 USD = ${rate.toLocaleString()} LBP`:null
- const inHomePeriod=(txDate:string)=>{if(homePeriod==='daily')return txDate===homeDate;if(homePeriod==='monthly')return txDate.slice(0,7)===homeDate.slice(0,7);return txDate.slice(0,4)===homeDate.slice(0,4)}
- const shiftHomePeriod=(direction:number)=>{const d=new Date(`${homeDate}T12:00:00`);if(homePeriod==='daily')d.setDate(d.getDate()+direction);else if(homePeriod==='monthly')d.setMonth(d.getMonth()+direction);else d.setFullYear(d.getFullYear()+direction);setHomeDate(d.toISOString().slice(0,10))}
- const homePeriodLabel=homePeriod==='daily'?new Date(`${homeDate}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):homePeriod==='monthly'?new Date(`${homeDate.slice(0,7)}-01T12:00:00`).toLocaleDateString('en-US',{month:'long',year:'numeric'}):homeDate.slice(0,4)
+ const inHomePeriod=(txDate:string)=>{if(homePeriod==='daily'||homePeriod==='custom')return txDate===homeDate;if(homePeriod==='monthly')return txDate.slice(0,7)===homeDate.slice(0,7);return txDate.slice(0,4)===homeDate.slice(0,4)}
+ const shiftHomePeriod=(direction:number)=>{const d=new Date(`${homeDate}T12:00:00`);if(homePeriod==='daily'||homePeriod==='custom')d.setDate(d.getDate()+direction);else if(homePeriod==='monthly')d.setMonth(d.getMonth()+direction);else d.setFullYear(d.getFullYear()+direction);setHomeDate(d.toISOString().slice(0,10))}
+ const openHomeCustomPicker=()=>{setHomePeriod('custom');setTimeout(()=>{const input=document.getElementById('home-custom-date') as HTMLInputElement|null;if(input?.showPicker)input.showPicker();else input?.click()},0)}
+ const homePeriodLabel=homePeriod==='daily'||homePeriod==='custom'?new Date(`${homeDate}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):homePeriod==='monthly'?new Date(`${homeDate.slice(0,7)}-01T12:00:00`).toLocaleDateString('en-US',{month:'long',year:'numeric'}):homeDate.slice(0,4)
  const homeWallet=data.wallets.find(w=>w.id===homeWalletId)||data.wallets[0]
  const homePeriodTx=homeWallet?data.transactions.filter(t=>(t.walletId===homeWallet.id||t.toWalletId===homeWallet.id)&&inHomePeriod(t.date)):[]
  const homeIncome=homePeriodTx.filter(t=>t.type==='income'&&t.walletId===homeWallet?.id).reduce((s,t)=>s+t.amount,0)
@@ -102,12 +104,12 @@ export default function App(){
  return <div className="shell"><main className="phone reference-layout">
   {tab==='Home'&&<section className="homeScreen">
    <header className="refHeader"><div><span className="eyebrow">SPENZA</span><h1>Good Morning! 👋</h1></div><button className="round" aria-label="Notifications"><Bell size={18}/></button></header>
-   <div className="filters refFilters periodFilters">{(['daily','monthly','yearly'] as InsightPeriod[]).map(p=><button key={p} className={homePeriod===p?'selected':''} onClick={()=>setHomePeriod(p)}>{p}</button>)}</div>
+   <div className="filters refFilters periodFilters homePeriodFilters">{(['daily','monthly','yearly'] as InsightPeriod[]).map(p=><button key={p} className={homePeriod===p?'selected':''} onClick={()=>setHomePeriod(p)}>{p}</button>)}<button className={homePeriod==='custom'?'selected':''} onClick={openHomeCustomPicker}>custom</button><input id="home-custom-date" className="homeCustomDateInput" type="date" value={homeDate} onChange={e=>{setHomeDate(e.target.value);setHomePeriod('custom')}} aria-label="Choose custom date"/></div>
    {data.wallets.length&&<div className="insightSelectors homeAccountSelector"><label>Account<select value={homeWallet?.id||''} onChange={e=>setHomeWalletId(e.target.value)}>{data.wallets.map(w=><option key={w.id} value={w.id}>{w.name} ({w.currency})</option>)}</select></label></div>}
    <section className="monthCard"><button onClick={()=>shiftHomePeriod(-1)} aria-label="Previous period"><ChevronLeft/></button><div><b>{homePeriodLabel}</b><span>{homeWallet?`${homeWallet.name} · ${homePeriod} net`:`${homePeriod} overview`}</span><strong>{homeWallet?money(homeNet,homeWallet.currency):'—'}</strong></div><button onClick={()=>shiftHomePeriod(1)} aria-label="Next period"><ChevronRight/></button></section>
    <div className="refSectionHead"><h2>Accounts</h2><button onClick={()=>setTab('Wallets')}>See All</button></div>
    {data.wallets.length?<div className="accountRail">{data.wallets.slice(0,4).map((w,i)=><button className={`accountTile accountTone${i%4}${homeWallet?.id===w.id?' selectedAccount':''}`} key={w.id} onClick={()=>setHomeWalletId(w.id)}><div><b>{w.name}</b><span>{w.currency}</span></div><strong>{money(walletBalance(w.id),w.currency)}</strong></button>)}</div>:<button className="emptyWalletCta" onClick={addWallet}><WalletCards/><span><b>Create your first wallet</b><small>Add cash, bank, or card balances before recording expenses.</small></span></button>}
-   <div className="refSectionHead"><h2>{homePeriodLabel} Overview</h2><button onClick={()=>{if(homeWallet)setInsightWalletId(homeWallet.id);setInsightPeriod(homePeriod);setInsightDate(homeDate);setTab('Insights')}}>See All</button></div>
+   <div className="refSectionHead"><h2>{homePeriodLabel} Overview</h2><button onClick={()=>{if(homeWallet)setInsightWalletId(homeWallet.id);setInsightPeriod(homePeriod==='custom'?'daily':homePeriod);setInsightDate(homeDate);setTab('Insights')}}>See All</button></div>
    <div className="overviewGrid"><article className="overviewIncome"><span>Total Income</span><strong>{homeWallet?money(homeIncome,homeWallet.currency):'—'}</strong><small>{homeWallet?`Expenses ${money(homeExpense,homeWallet.currency)}`:'Create a wallet first'}</small></article><article><span>Top Categories</span>{categoryTotals.slice(0,3).length?categoryTotals.slice(0,3).map(x=><div className="miniCategory" key={x.name}><span>{x.name}</span><b>{money(x.value,homeWallet?.currency||'USD')}</b></div>):<small>No spending yet</small>}</article></div>
    <article className="categoryPanel"><div className="refSectionHead compact"><h2>Expenses by Category</h2></div><div className="categoryChart"><div className="donut" style={{background:donutBackground}}><i/></div><div className="legend">{categoryTotals.slice(0,5).map((x,i)=><div key={x.name}><span><i style={{background:palette[i%palette.length]}}/>{x.name}</span><b>{categoryTotal?Math.round(x.value/categoryTotal*100):0}%</b></div>)}{!categoryTotals.length&&<small>No expense data yet</small>}</div></div></article>
    <section className="activity homeActivity"><div className="refSectionHead"><h2>Recent Transactions</h2><button onClick={openAllActivity}>See All</button></div>{homePeriodTx.length?homePeriodTx.slice(0,4).map(t=><TxRow t={t} key={t.id}/>):<div className="empty compact">No transactions for this account and period.</div>}</section>
