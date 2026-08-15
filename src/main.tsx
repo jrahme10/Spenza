@@ -9,6 +9,7 @@ import './backup.css'
 import './spenza-design.css'
 import './theme-settings.css'
 import './spenza-layout.css'
+import './bills.css'
 import './reset-danger.css'
 import { registerPwa } from './lib/pwa'
 
