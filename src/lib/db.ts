@@ -1,5 +1,7 @@
 export type Currency = 'USD' | 'LBP'
 export type TransactionType = 'expense' | 'income' | 'transfer'
+export type BillRecurrence = 'once' | 'monthly' | 'yearly'
+export type BillReminder = 0 | 1 | 3 | 7
 
 export type Wallet = {
   id: string
@@ -24,9 +26,25 @@ export type Transaction = {
   updatedAt: string
 }
 
+export type Bill = {
+  id: string
+  name: string
+  amount: number
+  walletId: string
+  category: string
+  dueDate: string
+  recurrence: BillRecurrence
+  reminderDays: BillReminder
+  note?: string
+  lastPaidDate?: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type SpenzaData = {
   wallets: Wallet[]
   transactions: Transaction[]
+  bills: Bill[]
   categories: string[]
   usdToLbpRate: number
 }
@@ -42,6 +60,7 @@ export const defaultData: SpenzaData = {
   wallets: [],
   categories: defaultCategories,
   transactions: [],
+  bills: [],
   usdToLbpRate: DEFAULT_USD_TO_LBP_RATE,
 }
 
@@ -68,6 +87,7 @@ export async function loadData(): Promise<SpenzaData> {
         wallets: stored?.wallets ?? [],
         categories: stored?.categories ?? defaultCategories,
         transactions: stored?.transactions ?? [],
+        bills: stored?.bills ?? [],
         usdToLbpRate: stored?.usdToLbpRate ?? DEFAULT_USD_TO_LBP_RATE,
       })
     }
