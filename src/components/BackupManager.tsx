@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useRef, useState } from 'react'
+import { ChangeEvent, useRef, useState } from 'react'
 import { Download, Upload } from 'lucide-react'
 import { loadData, saveData, SpenzaData } from '../lib/db'
 
@@ -7,12 +7,8 @@ function isValidBackup(value:unknown):value is BackupFile{if(!value||typeof valu
 
 export default function BackupManager(){
  const inputRef=useRef<HTMLInputElement>(null)
- const [settingsOpen,setSettingsOpen]=useState(false)
  const [message,setMessage]=useState('')
- useEffect(()=>{const sync=()=>{const active=[...document.querySelectorAll('nav button')].find(b=>b.classList.contains('active'));setSettingsOpen(active?.textContent?.trim()==='Settings')};sync();const observer=new MutationObserver(sync);observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});return()=>observer.disconnect()},[])
- useEffect(()=>{const allowEmpty=(event:Event)=>{const target=event.target as HTMLInputElement|null;if(target?.matches('.settingsField input')&&target.value===''){event.stopPropagation()}};document.addEventListener('input',allowEmpty,true);return()=>document.removeEventListener('input',allowEmpty,true)},[])
  const exportBackup=async()=>{try{const data=await loadData();const backup:BackupFile={app:'Spenza',version:1,exportedAt:new Date().toISOString(),data};const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`spenza-backup-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);setMessage('Backup exported successfully.')}catch{setMessage('Could not export the backup.')}}
  const importBackup=async(event:ChangeEvent<HTMLInputElement>)=>{const file=event.target.files?.[0];event.target.value='';if(!file)return;try{const parsed=JSON.parse(await file.text()) as unknown;if(!isValidBackup(parsed)){setMessage('This is not a valid Spenza backup file.');return}const walletIds=new Set(parsed.data.wallets.map(w=>w.id));if(parsed.data.transactions.some(t=>!t.id||!t.type||!t.walletId||!walletIds.has(t.walletId))){setMessage('The backup contains invalid transaction or wallet references.');return}if(!window.confirm(`Import this Spenza backup?\n\n${parsed.data.wallets.length} wallets\n${parsed.data.transactions.length} transactions\n\nThis will replace the data currently stored on this device.`))return;await saveData(parsed.data);setMessage('Backup imported. Reloading Spenza…');setTimeout(()=>window.location.reload(),500)}catch{setMessage('Could not read this backup file.')}}
- if(!settingsOpen)return null
  return <section className="backup-settings"><div><h2>Backup & restore</h2><p>Export your local Spenza data or restore a backup on this device.</p></div><div className="backup-settings-actions"><button onClick={exportBackup}><Download size={17}/><span><b>Export backup</b><small>Download JSON backup</small></span></button><button onClick={()=>inputRef.current?.click()}><Upload size={17}/><span><b>Import backup</b><small>Restore JSON backup</small></span></button></div><input ref={inputRef} type="file" accept="application/json,.json" hidden onChange={importBackup}/>{message&&<div className="backup-message">{message}</div>}</section>
 }
