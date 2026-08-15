@@ -1,9 +1,10 @@
+export type Currency = 'USD' | 'LBP'
 export type TransactionType = 'expense' | 'income' | 'transfer'
 
 export type Wallet = {
   id: string
   name: string
-  currency: 'USD' | 'LBP'
+  currency: Currency
   openingBalance: number
 }
 
@@ -26,6 +27,7 @@ export type SpenzaData = {
   wallets: Wallet[]
   transactions: Transaction[]
   categories: string[]
+  usdToLbpRate: number
 }
 
 const DB_NAME = 'spenza-db'
@@ -33,13 +35,13 @@ const STORE = 'app-data'
 const KEY = 'spenza'
 
 export const defaultCategories = ['Food', 'Transport', 'Shopping', 'Bills', 'Coffee', 'Entertainment', 'Health', 'Education', 'Travel', 'Salary', 'Other']
+export const DEFAULT_USD_TO_LBP_RATE = 89500
 
-// A new install and a reset both start with zero financial data.
-// Categories remain available because they are app configuration, not user transactions/balances.
 export const defaultData: SpenzaData = {
   wallets: [],
   categories: defaultCategories,
   transactions: [],
+  usdToLbpRate: DEFAULT_USD_TO_LBP_RATE,
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -59,7 +61,15 @@ export async function loadData(): Promise<SpenzaData> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readonly')
     const req = tx.objectStore(STORE).get(KEY)
-    req.onsuccess = () => resolve(req.result ?? defaultData)
+    req.onsuccess = () => {
+      const stored = req.result as Partial<SpenzaData> | undefined
+      resolve({
+        wallets: stored?.wallets ?? [],
+        categories: stored?.categories ?? defaultCategories,
+        transactions: stored?.transactions ?? [],
+        usdToLbpRate: stored?.usdToLbpRate ?? DEFAULT_USD_TO_LBP_RATE,
+      })
+    }
     req.onerror = () => reject(req.error)
   })
 }
