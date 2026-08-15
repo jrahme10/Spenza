@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles.css'
 import './transaction-polish.css'
+import './exchange.css'
 import { registerPwa } from './lib/pwa'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
