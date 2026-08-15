@@ -1,6 +1,6 @@
-# Velora Expenses
+# Spenza
 
-Velora is a mobile-first React expense management app designed around a classy, user-friendly interface and a privacy-first local + cloud data model.
+Spenza is a mobile-first React expense management app designed around a classy, user-friendly interface and a privacy-first local + cloud data model.
 
 ## Features
 
@@ -29,7 +29,7 @@ Copy `.env.example` to `.env` and provide your Supabase values when cloud mode i
 
 ## GitHub Pages
 
-The included workflow builds and deploys the app to GitHub Pages on pushes to `main`.
+The included workflow builds and deploys Spenza to GitHub Pages on pushes to `main`.
 
 ## Supabase
 
