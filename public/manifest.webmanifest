@@ -1,1 +1,28 @@
-{"name":"Spenza","short_name":"Spenza","description":"A classy, privacy-first expense tracker with local and cloud modes.","start_url":"./","display":"standalone","background_color":"#f6f3ee","theme_color":"#0f172a","icons":[{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{
+  "id": "./",
+  "name": "Spenza Expense Manager",
+  "short_name": "Spenza",
+  "description": "A classy, privacy-first expense manager with offline support, receipt scanning, wallet tracking, and insights.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait-primary",
+  "background_color": "#f8f7f3",
+  "theme_color": "#20352d",
+  "categories": ["finance", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
