@@ -2,14 +2,15 @@ import { ChangeEvent, useEffect, useRef, useState } from 'react'
 import { Download, Upload } from 'lucide-react'
 import { loadData, saveData, SpenzaData } from '../lib/db'
 
-type BackupFile = { app:'Spenza'; version:1; exportedAt:string; data:SpenzaData }
+type BackupFile={app:'Spenza';version:1;exportedAt:string;data:SpenzaData}
 function isValidBackup(value:unknown):value is BackupFile{if(!value||typeof value!=='object')return false;const backup=value as Partial<BackupFile>;const data=backup.data as Partial<SpenzaData>|undefined;return backup.app==='Spenza'&&backup.version===1&&!!data&&Array.isArray(data.wallets)&&Array.isArray(data.transactions)&&Array.isArray(data.categories)}
 
 export default function BackupManager(){
  const inputRef=useRef<HTMLInputElement>(null)
  const [settingsOpen,setSettingsOpen]=useState(false)
  const [message,setMessage]=useState('')
- useEffect(()=>{const sync=()=>setSettingsOpen(document.body.dataset.spenzaTab==='Settings');sync();window.addEventListener('spenza-tab-change',sync);return()=>window.removeEventListener('spenza-tab-change',sync)},[])
+ useEffect(()=>{const sync=()=>{const active=[...document.querySelectorAll('nav button')].find(b=>b.classList.contains('active'));setSettingsOpen(active?.textContent?.trim()==='Settings')};sync();const observer=new MutationObserver(sync);observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});return()=>observer.disconnect()},[])
+ useEffect(()=>{const allowEmpty=(event:Event)=>{const target=event.target as HTMLInputElement|null;if(target?.matches('.settingsField input')&&target.value===''){event.stopPropagation()}};document.addEventListener('input',allowEmpty,true);return()=>document.removeEventListener('input',allowEmpty,true)},[])
  const exportBackup=async()=>{try{const data=await loadData();const backup:BackupFile={app:'Spenza',version:1,exportedAt:new Date().toISOString(),data};const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`spenza-backup-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);setMessage('Backup exported successfully.')}catch{setMessage('Could not export the backup.')}}
  const importBackup=async(event:ChangeEvent<HTMLInputElement>)=>{const file=event.target.files?.[0];event.target.value='';if(!file)return;try{const parsed=JSON.parse(await file.text()) as unknown;if(!isValidBackup(parsed)){setMessage('This is not a valid Spenza backup file.');return}const walletIds=new Set(parsed.data.wallets.map(w=>w.id));if(parsed.data.transactions.some(t=>!t.id||!t.type||!t.walletId||!walletIds.has(t.walletId))){setMessage('The backup contains invalid transaction or wallet references.');return}if(!window.confirm(`Import this Spenza backup?\n\n${parsed.data.wallets.length} wallets\n${parsed.data.transactions.length} transactions\n\nThis will replace the data currently stored on this device.`))return;await saveData(parsed.data);setMessage('Backup imported. Reloading Spenza…');setTimeout(()=>window.location.reload(),500)}catch{setMessage('Could not read this backup file.')}}
  if(!settingsOpen)return null
