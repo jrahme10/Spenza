@@ -1,1 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="120" fill="#0f172a"/><path d="M132 154h68l56 166 56-166h68L287 374h-62z" fill="#f4c95d"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Spenza logo">
+  <rect width="512" height="512" rx="116" fill="#20352d"/>
+  <circle cx="256" cy="256" r="164" fill="#f8f7f3" opacity="0.06"/>
+  <path d="M350 168c-25-28-61-43-103-43-64 0-109 31-109 79 0 47 38 66 101 80 45 10 61 18 61 36 0 20-20 32-51 32-37 0-70-15-96-42l-39 43c33 37 80 57 133 57 72 0 119-34 119-88 0-47-33-69-103-85-42-10-60-17-60-34 0-17 17-28 45-28 28 0 52 10 72 31z" fill="#f8f7f3"/>
+  <path d="M124 381h264" stroke="#c7a86b" stroke-width="13" stroke-linecap="round"/>
+</svg>
