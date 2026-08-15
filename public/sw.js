@@ -1,1 +1,49 @@
-const CACHE='velora-v1';self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./']))));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match('./'))))});
+const CACHE_NAME = 'spenza-v3'
+const APP_SHELL = ['./', './manifest.webmanifest', './icon.svg']
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+  )
+})
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
+  )
+})
+
+self.addEventListener('fetch', event => {
+  const request = event.request
+  if (request.method !== 'GET') return
+
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          const copy = response.clone()
+          caches.open(CACHE_NAME).then(cache => cache.put('./', copy))
+          return response
+        })
+        .catch(() => caches.match('./'))
+    )
+    return
+  }
+
+  event.respondWith(
+    caches.match(request).then(cached => {
+      const network = fetch(request)
+        .then(response => {
+          if (response && response.status === 200 && response.type !== 'opaque') {
+            const copy = response.clone()
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy))
+          }
+          return response
+        })
+        .catch(() => cached)
+      return cached || network
+    })
+  )
+})
