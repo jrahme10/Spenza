@@ -1,0 +1,7 @@
+Spenza restore point
+
+Purpose: State before changing Settings > Reset local data to dark red.
+Restore commit: c0cd3027307a0f25e1708f0bec40e29501bf193b
+Date: 2026-08-15
+
+To fully restore the app to the state before this approved change, restore the repository to the commit above (or revert the subsequent reset-button styling commits).
