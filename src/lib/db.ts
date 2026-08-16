@@ -4,6 +4,17 @@ export type Currency = 'USD' | 'LBP'
 export type TransactionType = 'expense' | 'income' | 'transfer'
 export type BillRecurrence = 'once' | 'monthly' | 'yearly'
 export type BillReminder = 0 | 1 | 3 | 7
+export type SyncEntityType = 'wallet' | 'transaction' | 'bill'
+
+export type SyncTombstone = {
+  entityType: SyncEntityType
+  entityId: string
+  deletedAt: string
+}
+
+export type SyncState = {
+  tombstones: SyncTombstone[]
+}
 
 export type Wallet = {
   id: string
@@ -63,9 +74,10 @@ export type SpenzaData = {
   security: AppSecuritySettings
   notificationReadIds: string[]
   notificationDismissedIds: string[]
+  sync: SyncState
 }
 
-export const DATA_SCHEMA_VERSION = 2
+export const DATA_SCHEMA_VERSION = 3
 export const defaultCategories = ['Food', 'Transport', 'Shopping', 'Bills', 'Coffee', 'Entertainment', 'Health', 'Education', 'Travel', 'Salary', 'Other']
 export const DEFAULT_USD_TO_LBP_RATE = 89500
 
@@ -78,6 +90,7 @@ export const defaultData: SpenzaData = {
   security: { enabled: false, timeoutMinutes: 0, biometricEnabled: false },
   notificationReadIds: [],
   notificationDismissedIds: [],
+  sync: { tombstones: [] },
 }
 
 export const localDataStore: DataStore<SpenzaData> = new IndexedDbDataStore<SpenzaData>()
@@ -91,6 +104,15 @@ function isStoredEnvelope(value: unknown): value is StoredEnvelope<SpenzaData> {
 function dateFallback(date?: string) {
   if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) return `${date}T12:00:00.000Z`
   return new Date().toISOString()
+}
+
+function normalizeTombstones(value: unknown): SyncTombstone[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is SyncTombstone => {
+    if (!item || typeof item !== 'object') return false
+    const tombstone = item as Partial<SyncTombstone>
+    return ['wallet','transaction','bill'].includes(String(tombstone.entityType)) && typeof tombstone.entityId === 'string' && !!tombstone.entityId && typeof tombstone.deletedAt === 'string' && !!tombstone.deletedAt
+  })
 }
 
 function normalizeData(stored?: Partial<SpenzaData>): SpenzaData {
@@ -124,6 +146,7 @@ function normalizeData(stored?: Partial<SpenzaData>): SpenzaData {
     },
     notificationReadIds: stored?.notificationReadIds ?? [],
     notificationDismissedIds: stored?.notificationDismissedIds ?? [],
+    sync: { tombstones: normalizeTombstones(stored?.sync?.tombstones) },
   }
 }
 
@@ -145,7 +168,6 @@ export async function loadData(): Promise<SpenzaData> {
     return data
   }
 
-  // Legacy v1 data was stored directly at the IndexedDB key. Migrate it in place.
   const data = normalizeData(stored as Partial<SpenzaData>)
   await localDataStore.save(envelope(data))
   return data
