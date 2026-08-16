@@ -46,6 +46,8 @@ export type AppSecuritySettings = {
   pinHash?: string
   salt?: string
   timeoutMinutes: number
+  biometricEnabled?: boolean
+  biometricCredentialId?: string
 }
 
 export type SpenzaData = {
@@ -72,7 +74,7 @@ export const defaultData: SpenzaData = {
   transactions: [],
   bills: [],
   usdToLbpRate: DEFAULT_USD_TO_LBP_RATE,
-  security: { enabled: false, timeoutMinutes: 0 },
+  security: { enabled: false, timeoutMinutes: 0, biometricEnabled: false },
   notificationReadIds: [],
   notificationDismissedIds: [],
 }
@@ -102,7 +104,14 @@ export async function loadData(): Promise<SpenzaData> {
         transactions: stored?.transactions ?? [],
         bills: stored?.bills ?? [],
         usdToLbpRate: stored?.usdToLbpRate ?? DEFAULT_USD_TO_LBP_RATE,
-        security: stored?.security ?? { enabled: false, timeoutMinutes: 0 },
+        security: {
+          enabled: stored?.security?.enabled ?? false,
+          pinHash: stored?.security?.pinHash,
+          salt: stored?.security?.salt,
+          timeoutMinutes: stored?.security?.timeoutMinutes ?? 0,
+          biometricEnabled: stored?.security?.biometricEnabled ?? false,
+          biometricCredentialId: stored?.security?.biometricCredentialId,
+        },
         notificationReadIds: stored?.notificationReadIds ?? [],
         notificationDismissedIds: stored?.notificationDismissedIds ?? [],
       })
