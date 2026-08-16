@@ -16,14 +16,22 @@ import './center-add.css'
 import './mobile-safe.css'
 import './security-notifications.css'
 import { registerPwa } from './lib/pwa'
+import { syncSupabaseIfAuthenticated } from './lib/supabaseSync'
 
-initTheme()
+async function bootstrap(){
+  initTheme()
+  // Cloud sync is optional. Missing config, signed-out users, or network failures
+  // never prevent the local IndexedDB app from starting.
+  await syncSupabaseIfAuthenticated().catch(()=>undefined)
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  )
 
-initDynamicGreeting()
-registerPwa()
+  initDynamicGreeting()
+  registerPwa()
+}
+
+void bootstrap()
