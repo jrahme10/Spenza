@@ -35,11 +35,28 @@ export async function getSupabaseUserId(){
   return data.session?.user.id
 }
 
-export async function signInWithEmailOtp(email:string){
+export async function signInWithEmailPassword(email:string,password:string){
+  const supabase=getSupabaseClient()
+  if(!supabase)throw new Error('Supabase is not configured')
+  const {data,error}=await supabase.auth.signInWithPassword({email,password})
+  if(error)throw error
+  return data
+}
+
+export async function signUpWithEmailPassword(email:string,password:string){
   const supabase=getSupabaseClient()
   if(!supabase)throw new Error('Supabase is not configured')
   const emailRedirectTo=authRedirectUrl()
-  const {data,error}=await supabase.auth.signInWithOtp({email,options:emailRedirectTo?{emailRedirectTo}:undefined})
+  const {data,error}=await supabase.auth.signUp({email,password,options:emailRedirectTo?{emailRedirectTo}:undefined})
+  if(error)throw error
+  return data
+}
+
+export async function resetSupabasePassword(email:string){
+  const supabase=getSupabaseClient()
+  if(!supabase)throw new Error('Supabase is not configured')
+  const redirectTo=authRedirectUrl()
+  const {data,error}=await supabase.auth.resetPasswordForEmail(email,redirectTo?{redirectTo}:undefined)
   if(error)throw error
   return data
 }
