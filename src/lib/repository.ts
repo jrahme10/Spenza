@@ -20,9 +20,14 @@ function withPendingChange(data:SpenzaData,entityType:SyncEntityType,entityId:st
   return {...data,sync:{...data.sync,pendingChanges:[...others,change].sort((a,b)=>a.changedAt.localeCompare(b.changedAt))}}
 }
 
+export function hasFinancialData(data:SpenzaData){
+  return data.wallets.length>0||data.transactions.length>0||data.bills.length>0
+}
+
 export interface SpenzaRepository {
   getSnapshot():Promise<SpenzaData>
   replaceSnapshot(data:SpenzaData):Promise<void>
+  clearFinancialDataForAccountSwitch():Promise<SpenzaData>
   upsertWallet(wallet:Wallet):Promise<SpenzaData>
   upsertWalletAndTransactions(wallet:Wallet,transactions:Transaction[]):Promise<SpenzaData>
   deleteWallet(id:string):Promise<SpenzaData>
@@ -35,6 +40,19 @@ export interface SpenzaRepository {
 export class LocalSpenzaRepository implements SpenzaRepository {
   async getSnapshot(){return loadData()}
   async replaceSnapshot(data:SpenzaData){await saveData(data)}
+
+  async clearFinancialDataForAccountSwitch(){
+    const data=await loadData()
+    const cleared:SpenzaData={
+      ...data,
+      wallets:[],
+      transactions:[],
+      bills:[],
+      sync:{tombstones:[],pendingChanges:[]},
+    }
+    await saveData(cleared)
+    return cleared
+  }
 
   async upsertWallet(wallet:Wallet){
     let data=await loadData();const stamp=now();const existing=data.wallets.find(w=>w.id===wallet.id)
