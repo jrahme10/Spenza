@@ -1,0 +1,74 @@
+name: Add calendar transaction filter
+on:
+  push:
+    paths:
+      - '.github/workflows/add-calendar-filter.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add transaction calendar filter
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/App.tsx')
+          s=p.read_text()
+
+          component='''\ntype TransactionCalendarProps={value:string;markedDates:Set<string>;title:string;onSelect:(date:string)=>void;onClose:()=>void}\nconst TransactionCalendar=({value,markedDates,title,onSelect,onClose}:TransactionCalendarProps)=>{\n const [viewMonth,setViewMonth]=useState(value.slice(0,7))\n useEffect(()=>setViewMonth(value.slice(0,7)),[value])\n const [year,month]=viewMonth.split('-').map(Number)\n const firstDay=new Date(year,month-1,1).getDay()\n const daysInMonth=new Date(year,month,0).getDate()\n const cells=[...Array(firstDay).fill(null),...Array.from({length:daysInMonth},(_,i)=>i+1)]\n const monthLabel=new Date(year,month-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'})\n const shiftMonth=(direction:number)=>{const d=new Date(year,month-1+direction,1);setViewMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)}\n return <div className="calendarOverlay" onClick={onClose}><div className="transactionCalendar" onClick={e=>e.stopPropagation()}>\n  <div className="calendarTitleRow"><div><span className="eyebrow">FILTER BY DATE</span><h2>{title}</h2></div><button className="calendarClose" onClick={onClose}><X/></button></div>\n  <div className="calendarMonthNav"><button onClick={()=>shiftMonth(-1)} aria-label="Previous month"><ChevronLeft/></button><strong>{monthLabel}</strong><button onClick={()=>shiftMonth(1)} aria-label="Next month"><ChevronRight/></button></div>\n  <div className="calendarWeekdays">{['S','M','T','W','T','F','S'].map((d,i)=><span key={`${d}-${i}`}>{d}</span>)}</div>\n  <div className="calendarGrid">{cells.map((day,i)=>{if(!day)return <span className="calendarEmpty" key={`e-${i}`}/>;const date=`${viewMonth}-${String(day).padStart(2,'0')}`;const marked=markedDates.has(date);const selected=date===value;return <button key={date} className={`${marked?'hasTransactions ':''}${selected?'selectedDay':''}`} onClick={()=>onSelect(date)}><span>{day}</span>{marked&&<i aria-label="Has transactions"/>}</button>})}</div>\n  <div className="calendarLegend"><i/> Days with transactions</div>\n </div></div>\n}\n'''
+          marker="const palette=['#22d3ae','#7650ea','#2d94ee','#17a9a5','#a150e3']\n"
+          assert marker in s, 'palette marker missing'
+          if 'const TransactionCalendar=' not in s:
+              s=s.replace(marker,marker+component,1)
+
+          state_anchor=" const [notificationsOpen,setNotificationsOpen]=useState(false)"
+          assert state_anchor in s, 'notifications state anchor missing'
+          if 'homeCalendarOpen' not in s:
+              s=s.replace(state_anchor,state_anchor+"\n const [homeCalendarOpen,setHomeCalendarOpen]=useState(false)\n const [activityCalendarOpen,setActivityCalendarOpen]=useState(false)",1)
+
+          home_anchor=" const homeWallet=data.wallets.find(w=>w.id===homeWalletId)||data.wallets[0]"
+          assert home_anchor in s, 'home wallet anchor missing'
+          if 'homeCalendarDates' not in s:
+              s=s.replace(home_anchor,home_anchor+"\n const homeCalendarDates=new Set(homeWallet?data.transactions.filter(t=>t.walletId===homeWallet.id||t.toWalletId===homeWallet.id).map(t=>t.date):[])\n const activityCalendarDates=new Set((activityWalletId?data.transactions.filter(t=>t.walletId===activityWalletId||t.toWalletId===activityWalletId):data.transactions).filter(t=>activityTypeFilter==='all'||t.type===activityTypeFilter).map(t=>t.date))",1)
+
+          old_home='''<label className={`customDateButton ${homePeriod==='custom'?'selected':''}`}>custom<input id="home-custom-date" className="homeCustomDateInput" type="date" value={homeDate} onClick={()=>setHomePeriod('custom')} onChange={e=>{if(e.target.value)setHomeDate(e.target.value);setHomePeriod('custom')}} aria-label="Choose custom date"/></label>'''
+          new_home='''<button className={`calendarFilterButton ${homePeriod==='custom'?'selected':''}`} onClick={()=>setHomeCalendarOpen(true)}><CalendarClock size={12}/>Calendar</button>'''
+          assert old_home in s, 'Home custom filter control missing'
+          s=s.replace(old_home,new_home,1)
+
+          old_activity='''<label className={`activityCustomDate ${activityPeriod==='custom'?'selected':''}`}>Custom<input type="date" value={activityDate} onClick={()=>setActivityPeriod('custom')} onChange={e=>{if(e.target.value)setActivityDate(e.target.value);setActivityPeriod('custom')}} aria-label="Choose transaction date"/></label>'''
+          new_activity='''<button className={`calendarFilterButton ${activityPeriod==='custom'?'selected':''}`} onClick={()=>setActivityCalendarOpen(true)}><CalendarClock size={12}/>Calendar</button>'''
+          assert old_activity in s, 'Transactions custom filter control missing'
+          s=s.replace(old_activity,new_activity,1)
+
+          s=s.replace("${homeWallet.name} · ${homePeriod} net","${homeWallet.name} · ${homePeriod==='custom'?'calendar':homePeriod} net",1)
+
+          nav_anchor="  <nav>{[['Home',Home]"
+          assert nav_anchor in s, 'nav anchor missing'
+          calendar_render="""  {homeCalendarOpen&&<TransactionCalendar title={homeWallet?`${homeWallet.name} transactions`:'Transactions'} value={homeDate} markedDates={homeCalendarDates} onSelect={d=>{setHomeDate(d);setHomePeriod('custom');setHomeCalendarOpen(false)}} onClose={()=>setHomeCalendarOpen(false)}/>}\n  {activityCalendarOpen&&<TransactionCalendar title={activityWallet?`${activityWallet.name} transactions`:'Transactions'} value={activityDate} markedDates={activityCalendarDates} onSelect={d=>{setActivityDate(d);setActivityPeriod('custom');setActivityCalendarOpen(false)}} onClose={()=>setActivityCalendarOpen(false)}/>}\n"""
+          if 'homeCalendarOpen&&<TransactionCalendar' not in s:
+              s=s.replace(nav_anchor,calendar_render+nav_anchor,1)
+
+          # Sanity checks.
+          assert '>Calendar</button>' in s
+          assert 'hasTransactions' in s
+          assert "setHomePeriod('custom')" in s
+          assert "setActivityPeriod('custom')" in s
+          p.write_text(s)
+
+          css=Path('src/spenza-layout.css')
+          cs=css.read_text()
+          marker='/* transaction-calendar-filter */'
+          if marker not in cs:
+              cs += '''\n/* transaction-calendar-filter */\n.calendarFilterButton{display:inline-flex!important;align-items:center;justify-content:center;gap:4px}.calendarFilterButton svg{width:12px!important;height:12px!important}.calendarOverlay{position:fixed;inset:0;z-index:1200;display:flex;align-items:flex-end;justify-content:center;padding:18px;background:rgba(3,10,18,.62);backdrop-filter:blur(14px)}.transactionCalendar{width:min(100%,390px);background:linear-gradient(180deg,var(--surface),var(--bg));border:1px solid var(--line);border-radius:26px;padding:20px;box-shadow:0 30px 90px rgba(0,0,0,.4);font-family:Inter,'DM Sans',system-ui,-apple-system,sans-serif}.calendarTitleRow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}.calendarTitleRow .eyebrow{font-size:8px;color:var(--accent);letter-spacing:.14em}.calendarTitleRow h2{margin:3px 0 0;font-size:19px;font-weight:800;color:var(--text)}.calendarClose,.calendarMonthNav button{border:1px solid var(--line);background:var(--surface2);color:var(--text);display:grid;place-items:center}.calendarClose{width:34px;height:34px;border-radius:50%}.calendarClose svg,.calendarMonthNav svg{width:15px}.calendarMonthNav{display:grid;grid-template-columns:34px 1fr 34px;align-items:center;gap:8px;margin:4px 0 12px}.calendarMonthNav strong{text-align:center;font-size:13px;color:var(--text)}.calendarMonthNav button{width:32px;height:32px;border-radius:50%}.calendarWeekdays,.calendarGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.calendarWeekdays{margin-bottom:5px}.calendarWeekdays span{text-align:center;font-size:8px;font-weight:800;color:var(--muted)}.calendarGrid button,.calendarEmpty{aspect-ratio:1;min-width:0}.calendarGrid button{position:relative;border:1px solid transparent;border-radius:11px;background:var(--surface2);color:var(--text);font-size:10px;font-weight:750;display:grid;place-items:center;padding:0}.calendarGrid button.hasTransactions{border-color:rgba(24,223,177,.34);background:rgba(24,223,177,.08)}.calendarGrid button.selectedDay{background:linear-gradient(135deg,#18dfb1,#13b9ef);color:#041716;border-color:transparent}.calendarGrid button i{position:absolute;bottom:5px;width:4px;height:4px;border-radius:50%;background:var(--accent)}.calendarGrid button.selectedDay i{background:#041716}.calendarLegend{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;color:var(--muted);font-size:8px}.calendarLegend i{width:5px;height:5px;border-radius:50%;background:var(--accent)}@media(min-width:700px){.calendarOverlay{align-items:center}}\n'''
+              css.write_text(cs)
+          PY
+          npm install --no-audit --no-fund
+          npm run build
+          git config user.name "Spenza Bot"
+          git config user.email "actions@github.com"
+          git add src/App.tsx src/spenza-layout.css
+          git commit -m "Replace custom date filter with transaction calendar"
+          git push
