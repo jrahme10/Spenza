@@ -1,0 +1,25 @@
+name: Add Cloud Sync settings
+on:
+  push:
+    paths:
+      - '.github/workflows/add-cloud-sync-settings.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Settings UI
+        run: python3 .github/scripts/add_cloud_sync_settings.py
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build
+        run: npm run build
+      - name: Commit changes
+        run: |
+          git config user.name "Spenza Bot"
+          git config user.email "actions@github.com"
+          git add src/App.tsx
+          git commit -m "Add Cloud Sync account controls"
+          git push
