@@ -41,12 +41,22 @@ export type Bill = {
   updatedAt: string
 }
 
+export type AppSecuritySettings = {
+  enabled: boolean
+  pinHash?: string
+  salt?: string
+  timeoutMinutes: number
+}
+
 export type SpenzaData = {
   wallets: Wallet[]
   transactions: Transaction[]
   bills: Bill[]
   categories: string[]
   usdToLbpRate: number
+  security: AppSecuritySettings
+  notificationReadIds: string[]
+  notificationDismissedIds: string[]
 }
 
 const DB_NAME = 'spenza-db'
@@ -62,6 +72,9 @@ export const defaultData: SpenzaData = {
   transactions: [],
   bills: [],
   usdToLbpRate: DEFAULT_USD_TO_LBP_RATE,
+  security: { enabled: false, timeoutMinutes: 0 },
+  notificationReadIds: [],
+  notificationDismissedIds: [],
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -89,6 +102,9 @@ export async function loadData(): Promise<SpenzaData> {
         transactions: stored?.transactions ?? [],
         bills: stored?.bills ?? [],
         usdToLbpRate: stored?.usdToLbpRate ?? DEFAULT_USD_TO_LBP_RATE,
+        security: stored?.security ?? { enabled: false, timeoutMinutes: 0 },
+        notificationReadIds: stored?.notificationReadIds ?? [],
+        notificationDismissedIds: stored?.notificationDismissedIds ?? [],
       })
     }
     req.onerror = () => reject(req.error)

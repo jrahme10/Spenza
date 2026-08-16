@@ -14,6 +14,7 @@ import './bills.css'
 import './reset-danger.css'
 import './center-add.css'
 import './mobile-safe.css'
+import './security-notifications.css'
 import { registerPwa } from './lib/pwa'
 
 initTheme()
