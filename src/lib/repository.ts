@@ -16,6 +16,7 @@ export interface SpenzaRepository {
   getSnapshot():Promise<SpenzaData>
   replaceSnapshot(data:SpenzaData):Promise<void>
   upsertWallet(wallet:Wallet):Promise<SpenzaData>
+  upsertWalletAndTransactions(wallet:Wallet,transactions:Transaction[]):Promise<SpenzaData>
   deleteWallet(id:string):Promise<SpenzaData>
   upsertTransaction(transaction:Transaction):Promise<SpenzaData>
   deleteTransaction(id:string):Promise<SpenzaData>
@@ -32,6 +33,18 @@ export class LocalSpenzaRepository implements SpenzaRepository {
     const next:Wallet={...wallet,createdAt:existing?.createdAt||wallet.createdAt||stamp,updatedAt:stamp}
     data={...data,wallets:existing?data.wallets.map(w=>w.id===wallet.id?next:w):[...data.wallets,next]}
     data=withoutTombstone(data,'wallet',wallet.id);await saveData(data);return data
+  }
+
+  async upsertWalletAndTransactions(wallet:Wallet,transactions:Transaction[]){
+    let data=await loadData();const stamp=now();const existing=data.wallets.find(w=>w.id===wallet.id)
+    const nextWallet:Wallet={...wallet,createdAt:existing?.createdAt||wallet.createdAt||stamp,updatedAt:stamp}
+    const incoming=new Map(transactions.map(t=>[t.id,t]))
+    const nextTransactions=data.transactions.map(current=>{const candidate=incoming.get(current.id);if(!candidate)return current;incoming.delete(current.id);return {...candidate,createdAt:current.createdAt||candidate.createdAt||stamp,updatedAt:stamp}})
+    for(const candidate of incoming.values())nextTransactions.unshift({...candidate,createdAt:candidate.createdAt||stamp,updatedAt:stamp})
+    data={...data,wallets:existing?data.wallets.map(w=>w.id===wallet.id?nextWallet:w):[...data.wallets,nextWallet],transactions:nextTransactions}
+    data=withoutTombstone(data,'wallet',wallet.id)
+    for(const transaction of transactions)data=withoutTombstone(data,'transaction',transaction.id)
+    await saveData(data);return data
   }
 
   async deleteWallet(id:string){
