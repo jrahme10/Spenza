@@ -8,3 +8,6 @@
 .refWalletGrid .walletActions{position:relative!important;z-index:60!important;pointer-events:auto!important}
 .refWalletGrid .walletActions button,.refWalletGrid .walletEdit,.refWalletGrid .walletDelete{position:relative!important;z-index:70!important;pointer-events:auto!important;touch-action:manipulation!important}
 .refWalletGrid .walletActions button svg{pointer-events:none!important}
+
+/* activity-period-filter */
+.activityPeriodFilters{position:relative;max-width:330px!important;margin-top:-6px!important}.activityCustomDate{position:relative;display:inline-flex;align-items:center;justify-content:center;padding:7px 11px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;overflow:hidden;cursor:pointer}.activityCustomDate.selected{background:rgba(24,223,177,.14);color:var(--accent);border-color:rgba(24,223,177,.35)}.activityCustomDate input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;pointer-events:auto}
