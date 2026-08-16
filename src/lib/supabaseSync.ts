@@ -9,6 +9,7 @@ import { SupabaseSyncProvider } from './supabaseSyncProvider'
 export type SupabaseSyncResult={status:'disabled'|'signed-out'|'synced'|'error';data?:SpenzaData;error?:string;rejected?:number}
 
 const syncKey=(entityType:SyncEntityType,entityId:string)=>`${entityType}:${entityId}`
+const epoch='1970-01-01T00:00:00.000Z'
 
 function removePending(data:SpenzaData,entityType:SyncEntityType,entityId:string){
   const key=syncKey(entityType,entityId)
@@ -62,6 +63,14 @@ function applyRemote(data:SpenzaData,raw:RemoteSyncRecord):SpenzaData{
   return {...data,bills:data.bills.some(b=>b.id===record.entityId)?data.bills.map(b=>b.id===record.entityId?next:b):[...data.bills,next]}
 }
 
+function bootstrapRecords(data:SpenzaData):RemoteSyncRecord<RemotePayload>[] {
+  const fallback=new Date().toISOString()
+  const wallets:RemoteSyncRecord<RemotePayload>[] = data.wallets.map(wallet=>({entityType:'wallet',entityId:wallet.id,operation:'upsert',changedAt:wallet.updatedAt||wallet.createdAt||fallback,payload:wallet}))
+  const transactions:RemoteSyncRecord<RemotePayload>[] = data.transactions.map(transaction=>({entityType:'transaction',entityId:transaction.id,operation:'upsert',changedAt:transaction.updatedAt||transaction.createdAt||fallback,payload:transaction}))
+  const bills:RemoteSyncRecord<RemotePayload>[] = data.bills.map(bill=>({entityType:'bill',entityId:bill.id,operation:'upsert',changedAt:bill.updatedAt||bill.createdAt||fallback,payload:bill}))
+  return [...wallets,...transactions,...bills]
+}
+
 export async function syncSupabaseIfAuthenticated():Promise<SupabaseSyncResult>{
   if(!isSupabaseConfigured())return {status:'disabled'}
   const supabase=getSupabaseClient()
@@ -71,16 +80,31 @@ export async function syncSupabaseIfAuthenticated():Promise<SupabaseSyncResult>{
     if(!userId)return {status:'signed-out'}
     const provider=new SupabaseSyncProvider(supabase,userId)
     let data=await localRepository.getSnapshot()
-    const pending=serializePendingChanges(data)
     let rejected=0
+
+    // Imported/legacy data can exist without pendingChanges. If this account has no
+    // cloud records yet, treat the first sync as an initial full backup.
+    const hasLocalFinancialData=data.wallets.length>0||data.transactions.length>0||data.bills.length>0
+    if(hasLocalFinancialData){
+      const remoteProbe=await provider.pullChanges({since:epoch,limit:1})
+      if(remoteProbe.changes.length===0){
+        const bootstrap=bootstrapRecords(data)
+        if(bootstrap.length){
+          const pushed=await provider.pushChanges(bootstrap)
+          rejected+=pushed.rejected.length
+        }
+      }
+    }
+
+    const pending=serializePendingChanges(data)
     if(pending.length){
       const pushed=await provider.pushChanges(pending)
-      rejected=pushed.rejected.length
+      rejected+=pushed.rejected.length
       data=acknowledgeChanges(data,pushed.accepted,pushed.serverTime)
     }
 
     let cursor: string|undefined
-    let serverTime=data.sync.lastSyncAt||new Date(0).toISOString()
+    let serverTime=data.sync.lastSyncAt||epoch
     for(let page=0;page<20;page++){
       const pulled=await provider.pullChanges({since:data.sync.lastSyncAt,limit:500,cursor})
       for(const change of pulled.changes)data=applyRemote(data,change)
