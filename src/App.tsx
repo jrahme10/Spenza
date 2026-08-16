@@ -24,11 +24,11 @@ export default function App(){
  const [ready,setReady]=useState(false)
  const [tab,setTab]=useState('Home')
  const [activityWalletId,setActivityWalletId]=useState<string|null>(null)
- const [activityTypeFilter,setActivityTypeFilter]=useState<'all'|TransactionType>('all')
+ const [activityTypeFilter,setActivityTypeFilter]=useState<'all'|TransactionType>(()=>{const v=localStorage.getItem('spenza-activity-type') as ('all'|TransactionType)|null;return v&&['all','income','expense','transfer'].includes(v)?v:'all'})
  const [activityPeriod,setActivityPeriod]=useState<HomePeriod>(()=>{const v=localStorage.getItem('spenza-activity-period') as HomePeriod|null;return v&&['daily','monthly','yearly','custom'].includes(v)?v:'daily'})
  const [activityDate,setActivityDate]=useState(()=>localStorage.getItem('spenza-activity-date')||today())
- const [insightWalletId,setInsightWalletId]=useState('')
- const [insightCategory,setInsightCategory]=useState('all')
+ const [insightWalletId,setInsightWalletId]=useState(()=>localStorage.getItem('spenza-insight-wallet-id')||'')
+ const [insightCategory,setInsightCategory]=useState(()=>localStorage.getItem('spenza-insight-category')||'all')
  const [insightPeriod,setInsightPeriod]=useState<InsightPeriod>(()=>{const v=localStorage.getItem('spenza-insight-period') as InsightPeriod|null;return v&&['daily','monthly','yearly'].includes(v)?v:'daily'})
  const [insightDate,setInsightDate]=useState(()=>localStorage.getItem('spenza-insight-date')||today())
  const [homeWalletId,setHomeWalletId]=useState(()=>localStorage.getItem('spenza-home-wallet-id')||'')
@@ -53,12 +53,15 @@ export default function App(){
  const [notificationsOpen,setNotificationsOpen]=useState(false)
  useEffect(()=>{loadData().then(d=>{setData(d);setRateInput(String(d.usdToLbpRate||89500));setReady(true)}).catch(()=>setReady(true))},[])
  useEffect(()=>{if(ready)saveData(data)},[data,ready])
- useEffect(()=>{if(!insightWalletId&&data.wallets[0])setInsightWalletId(data.wallets[0].id);if(insightWalletId&&!data.wallets.some(w=>w.id===insightWalletId))setInsightWalletId(data.wallets[0]?.id||'')},[data.wallets,insightWalletId])
- useEffect(()=>{if(!homeWalletId&&data.wallets[0]){setHomeWalletId(data.wallets[0].id);return}if(homeWalletId&&!data.wallets.some(w=>w.id===homeWalletId)){const fallback=data.wallets[0]?.id||'';setHomeWalletId(fallback);if(fallback)localStorage.setItem('spenza-home-wallet-id',fallback);else localStorage.removeItem('spenza-home-wallet-id')}},[data.wallets,homeWalletId])
+ useEffect(()=>{if(!ready)return;if(!insightWalletId&&data.wallets[0])setInsightWalletId(data.wallets[0].id);if(insightWalletId&&!data.wallets.some(w=>w.id===insightWalletId))setInsightWalletId(data.wallets[0]?.id||'')},[data.wallets,insightWalletId,ready])
+ useEffect(()=>{if(!ready)return;if(!homeWalletId&&data.wallets[0]){setHomeWalletId(data.wallets[0].id);return}if(homeWalletId&&!data.wallets.some(w=>w.id===homeWalletId)){const fallback=data.wallets[0]?.id||'';setHomeWalletId(fallback);if(fallback)localStorage.setItem('spenza-home-wallet-id',fallback);else localStorage.removeItem('spenza-home-wallet-id')}},[data.wallets,homeWalletId,ready])
  useEffect(()=>{if(homeWalletId)localStorage.setItem('spenza-home-wallet-id',homeWalletId);else localStorage.removeItem('spenza-home-wallet-id')},[homeWalletId])
  useEffect(()=>{localStorage.setItem('spenza-home-period',homePeriod);localStorage.setItem('spenza-home-date',homeDate)},[homePeriod,homeDate])
  useEffect(()=>{localStorage.setItem('spenza-activity-period',activityPeriod);localStorage.setItem('spenza-activity-date',activityDate)},[activityPeriod,activityDate])
  useEffect(()=>{localStorage.setItem('spenza-insight-period',insightPeriod);localStorage.setItem('spenza-insight-date',insightDate)},[insightPeriod,insightDate])
+ useEffect(()=>{localStorage.setItem('spenza-activity-type',activityTypeFilter)},[activityTypeFilter])
+ useEffect(()=>{if(insightWalletId)localStorage.setItem('spenza-insight-wallet-id',insightWalletId);else localStorage.removeItem('spenza-insight-wallet-id')},[insightWalletId])
+ useEffect(()=>{localStorage.setItem('spenza-insight-category',insightCategory)},[insightCategory])
  const rate=data.usdToLbpRate||89500
  const convert=(value:number,from:Currency,to:Currency)=>from===to?value:from==='USD'?value*rate:value/rate
  const normalize=(value:number,currency:Currency)=>currency==='LBP'?Math.round(value):Math.round(value*100)/100
@@ -114,6 +117,7 @@ export default function App(){
  const gradientParts=categoryTotals.slice(0,5).map((x,i)=>{const start=categoryTotal?running/categoryTotal*100:0;running+=x.value;const end=categoryTotal?running/categoryTotal*100:0;return `${palette[i%palette.length]} ${start}% ${end}%`})
  const donutBackground=gradientParts.length?`conic-gradient(${gradientParts.join(',')})`:'conic-gradient(var(--surface3) 0 100%)'
  const activityGroups=activityTransactions.reduce<Record<string,Transaction[]>>((acc,t)=>{(acc[t.date]??=[]).push(t);return acc},{})
+ if(!ready)return <div className="shell"><main className="phone reference-layout"><div className="empty">Loading Spenza…</div></main></div>
  return <div className="shell"><main className="phone reference-layout">
   {tab==='Home'&&<section className="homeScreen">
    <header className="refHeader"><div><span className="eyebrow">SPENZA</span><h1>Good Morning! 👋</h1></div><NotificationBell data={data} onClick={()=>setNotificationsOpen(true)}/></header>
