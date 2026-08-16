@@ -1,0 +1,25 @@
+name: Wire repository actions
+on:
+  push:
+    paths:
+      - '.github/workflows/wire-repository-actions.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch app actions
+        run: python3 .github/scripts/wire_repository_actions.py
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build
+        run: npm run build
+      - name: Commit changes
+        run: |
+          git config user.name "Spenza Bot"
+          git config user.email "actions@github.com"
+          git add src/App.tsx
+          git commit -m "Route app writes through local repository"
+          git push
