@@ -1,0 +1,37 @@
+name: Fix account delete hitbox
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-delete-hitbox.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove wallet action overlay and harden click target
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          css=Path('src/spenza-layout.css')
+          s=css.read_text()
+          hardening='''\n/* Wallet action hitbox hardening */\n.refWalletGrid article{isolation:isolate!important}\n.refWalletGrid article::after{display:none!important;pointer-events:none!important}\n.refWalletGrid .walletCardTop{position:relative!important;z-index:50!important;pointer-events:auto!important}\n.refWalletGrid .walletActions{position:relative!important;z-index:60!important;pointer-events:auto!important}\n.refWalletGrid .walletActions button,.refWalletGrid .walletEdit,.refWalletGrid .walletDelete{position:relative!important;z-index:70!important;pointer-events:auto!important;touch-action:manipulation!important}\n'''
+          if 'Wallet action hitbox hardening' not in s:
+              css.write_text(s+hardening)
+
+          app=Path('src/App.tsx')
+          a=app.read_text()
+          old='''<button className="walletEdit" onClick={()=>editWallet(w)}><Pencil/></button><button className="walletDelete" onClick={()=>deleteWallet(w.id)}><Trash2/></button>'''
+          new='''<button className="walletEdit" onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();editWallet(w)}}><Pencil/></button><button className="walletDelete" onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();deleteWallet(w.id)}}><Trash2/></button>'''
+          assert old in a, 'wallet action buttons anchor not found'
+          app.write_text(a.replace(old,new,1))
+          PY
+          npm ci
+          npm run build
+          git config user.name "Spenza Bot"
+          git config user.email "actions@github.com"
+          git add src/App.tsx src/spenza-layout.css
+          git commit -m "Fix account delete button hitbox on mobile"
+          git push
