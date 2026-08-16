@@ -1,0 +1,70 @@
+name: Fix first-load filter initialization
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-first-load-filter-init.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix first-load filter initialization
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/App.tsx')
+          s=p.read_text()
+
+          replacements={
+          " const [activityTypeFilter,setActivityTypeFilter]=useState<'all'|TransactionType>('all')":" const [activityTypeFilter,setActivityTypeFilter]=useState<'all'|TransactionType>(()=>{const v=localStorage.getItem('spenza-activity-type') as ('all'|TransactionType)|null;return v&&['all','income','expense','transfer'].includes(v)?v:'all'})",
+          " const [insightWalletId,setInsightWalletId]=useState('')":" const [insightWalletId,setInsightWalletId]=useState(()=>localStorage.getItem('spenza-insight-wallet-id')||'')",
+          " const [insightCategory,setInsightCategory]=useState('all')":" const [insightCategory,setInsightCategory]=useState(()=>localStorage.getItem('spenza-insight-category')||'all')",
+          }
+          for old,new in replacements.items():
+              assert old in s, f'missing state anchor: {old}'
+              s=s.replace(old,new,1)
+
+          old_insight=" useEffect(()=>{if(!insightWalletId&&data.wallets[0])setInsightWalletId(data.wallets[0].id);if(insightWalletId&&!data.wallets.some(w=>w.id===insightWalletId))setInsightWalletId(data.wallets[0]?.id||'')},[data.wallets,insightWalletId])"
+          new_insight=" useEffect(()=>{if(!ready)return;if(!insightWalletId&&data.wallets[0])setInsightWalletId(data.wallets[0].id);if(insightWalletId&&!data.wallets.some(w=>w.id===insightWalletId))setInsightWalletId(data.wallets[0]?.id||'')},[data.wallets,insightWalletId,ready])"
+          assert old_insight in s, 'insight validation effect anchor missing'
+          s=s.replace(old_insight,new_insight,1)
+
+          old_home=" useEffect(()=>{if(!homeWalletId&&data.wallets[0]){setHomeWalletId(data.wallets[0].id);return}if(homeWalletId&&!data.wallets.some(w=>w.id===homeWalletId)){const fallback=data.wallets[0]?.id||'';setHomeWalletId(fallback);if(fallback)localStorage.setItem('spenza-home-wallet-id',fallback);else localStorage.removeItem('spenza-home-wallet-id')}},[data.wallets,homeWalletId])"
+          new_home=" useEffect(()=>{if(!ready)return;if(!homeWalletId&&data.wallets[0]){setHomeWalletId(data.wallets[0].id);return}if(homeWalletId&&!data.wallets.some(w=>w.id===homeWalletId)){const fallback=data.wallets[0]?.id||'';setHomeWalletId(fallback);if(fallback)localStorage.setItem('spenza-home-wallet-id',fallback);else localStorage.removeItem('spenza-home-wallet-id')}},[data.wallets,homeWalletId,ready])"
+          assert old_home in s, 'home validation effect anchor missing'
+          s=s.replace(old_home,new_home,1)
+
+          persistence_anchor=" useEffect(()=>{localStorage.setItem('spenza-insight-period',insightPeriod);localStorage.setItem('spenza-insight-date',insightDate)},[insightPeriod,insightDate])"
+          assert persistence_anchor in s, 'period persistence anchor missing'
+          extra=persistence_anchor+"\n useEffect(()=>{localStorage.setItem('spenza-activity-type',activityTypeFilter)},[activityTypeFilter])\n useEffect(()=>{if(insightWalletId)localStorage.setItem('spenza-insight-wallet-id',insightWalletId);else localStorage.removeItem('spenza-insight-wallet-id')},[insightWalletId])\n useEffect(()=>{localStorage.setItem('spenza-insight-category',insightCategory)},[insightCategory])"
+          s=s.replace(persistence_anchor,extra,1)
+
+          return_anchor=' return <div className="shell"><main className="phone reference-layout">'
+          assert return_anchor in s, 'main return anchor missing'
+          loading=' if(!ready)return <div className="shell"><main className="phone reference-layout"><div className="empty">Loading Spenza…</div></main></div>\n'
+          s=s.replace(return_anchor,loading+return_anchor,1)
+
+          # Verify first-load behavior and existing transaction filters.
+          assert "if(!ready)return" in s
+          assert "spenza-activity-type" in s
+          assert "spenza-insight-wallet-id" in s
+          assert "spenza-insight-category" in s
+          activity_start=s.index("{tab==='Activity'")
+          activity_end=s.index("{tab==='Wallets'",activity_start)
+          activity=s[activity_start:activity_end]
+          assert "setActivityTypeFilter('income')" in activity
+          assert "setActivityTypeFilter('expense')" in activity
+          assert "setActivityTypeFilter('transfer')" in activity
+          assert "setType('income');setOpen(true)" not in activity
+
+          p.write_text(s)
+          PY
+          npm install --no-audit --no-fund
+          npm run build
+          git config user.name "Spenza Bot"
+          git config user.email "actions@github.com"
+          git add src/App.tsx
+          git commit -m "Fix first-load filters and persist remaining selections"
+          git push
