@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { LockKeyhole } from 'lucide-react'
+import { LockKeyhole, ShieldCheck } from 'lucide-react'
 import { SpenzaData } from '../lib/db'
 import { hashPin } from '../lib/security'
+import { authenticateLocalBiometric, platformBiometricAvailable } from '../lib/biometrics'
 
 type Props={data:SpenzaData}
 
@@ -10,7 +11,10 @@ export default function AppLockGate({data}:Props){
   const [locked,setLocked]=useState(!!security?.enabled)
   const [pin,setPin]=useState('')
   const [error,setError]=useState('')
+  const [biometricSupported,setBiometricSupported]=useState(false)
+  const [biometricBusy,setBiometricBusy]=useState(false)
 
+  useEffect(()=>{platformBiometricAvailable().then(setBiometricSupported).catch(()=>setBiometricSupported(false))},[])
   useEffect(()=>{if(security?.enabled)setLocked(true);else setLocked(false)},[security?.enabled])
   useEffect(()=>{
     if(!security?.enabled)return
@@ -23,9 +27,10 @@ export default function AppLockGate({data}:Props){
       if((security.timeoutMinutes??0)===0||minutes>=(security.timeoutMinutes??0))setLocked(true)
       sessionStorage.removeItem(hiddenKey)
     }
+    const onPageHide=()=>sessionStorage.setItem(hiddenKey,String(Date.now()))
     document.addEventListener('visibilitychange',onVisibility)
-    window.addEventListener('pagehide',()=>sessionStorage.setItem(hiddenKey,String(Date.now())))
-    return()=>document.removeEventListener('visibilitychange',onVisibility)
+    window.addEventListener('pagehide',onPageHide)
+    return()=>{document.removeEventListener('visibilitychange',onVisibility);window.removeEventListener('pagehide',onPageHide)}
   },[security?.enabled,security?.timeoutMinutes])
 
   if(!security?.enabled||!locked)return null
@@ -34,5 +39,13 @@ export default function AppLockGate({data}:Props){
     const ok=(await hashPin(pin,security.salt))===security.pinHash
     if(ok){setLocked(false);setPin('');setError('')}else{setError('Incorrect PIN');setPin('')}
   }
-  return <div className="appLockScreen"><div className="appLockCard"><div className="appLockLogo"><LockKeyhole/></div><span className="eyebrow">SPENZA</span><h1>Welcome back</h1><p>Enter your PIN to unlock your finances.</p><input type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={e=>{setPin(e.target.value.replace(/\D/g,''));setError('')}} onKeyDown={e=>{if(e.key==='Enter')unlock()}} placeholder="Enter PIN" autoFocus/>{error&&<div className="securityError">{error}</div>}<button className="primary" onClick={unlock}>Unlock Spenza</button></div></div>
+  const unlockBiometric=async()=>{
+    if(!security.biometricCredentialId)return
+    setBiometricBusy(true);setError('')
+    const ok=await authenticateLocalBiometric(security.biometricCredentialId)
+    setBiometricBusy(false)
+    if(ok){setLocked(false);setPin('');setError('')}else setError('Biometric unlock was cancelled or could not be verified. Use your PIN instead.')
+  }
+  const canUseBiometric=!!security.biometricEnabled&&!!security.biometricCredentialId&&biometricSupported
+  return <div className="appLockScreen"><div className="appLockCard"><div className="appLockLogo"><LockKeyhole/></div><span className="eyebrow">SPENZA</span><h1>Welcome back</h1><p>{canUseBiometric?'Unlock with Face ID / biometrics, or use your PIN.':'Enter your PIN to unlock your finances.'}</p>{canUseBiometric&&<button className="biometricUnlock" onClick={unlockBiometric} disabled={biometricBusy}><ShieldCheck/>{biometricBusy?'Waiting for device…':'Unlock with Face ID / Biometrics'}</button>}{canUseBiometric&&<div className="unlockDivider"><span>or use PIN</span></div>}<input type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={e=>{setPin(e.target.value.replace(/\D/g,''));setError('')}} onKeyDown={e=>{if(e.key==='Enter')unlock()}} placeholder="Enter PIN" autoFocus={!canUseBiometric}/>{error&&<div className="securityError">{error}</div>}<button className="primary" onClick={unlock}>Unlock Spenza</button></div></div>
 }
