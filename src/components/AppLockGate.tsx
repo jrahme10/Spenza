@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { LockKeyhole, ShieldCheck } from 'lucide-react'
 import { SpenzaData } from '../lib/db'
 import { hashPin } from '../lib/security'
@@ -13,6 +13,7 @@ export default function AppLockGate({data}:Props){
   const [error,setError]=useState('')
   const [biometricSupported,setBiometricSupported]=useState(false)
   const [biometricBusy,setBiometricBusy]=useState(false)
+  const biometricAutoAttempted=useRef(false)
 
   useEffect(()=>{platformBiometricAvailable().then(setBiometricSupported).catch(()=>setBiometricSupported(false))},[])
   useEffect(()=>{if(security?.enabled)setLocked(true);else setLocked(false)},[security?.enabled])
@@ -33,19 +34,32 @@ export default function AppLockGate({data}:Props){
     return()=>{document.removeEventListener('visibilitychange',onVisibility);window.removeEventListener('pagehide',onPageHide)}
   },[security?.enabled,security?.timeoutMinutes])
 
+  const canUseBiometric=!!security?.biometricEnabled&&!!security?.biometricCredentialId&&biometricSupported
+
+  const unlockBiometric=async()=>{
+    if(!security?.biometricCredentialId||biometricBusy)return
+    setBiometricBusy(true);setError('')
+    try{
+      const ok=await authenticateLocalBiometric(security.biometricCredentialId)
+      if(ok){setLocked(false);setPin('');setError('')}else setError('Biometric unlock was cancelled or could not be verified. Use your PIN instead.')
+    }finally{
+      setBiometricBusy(false)
+    }
+  }
+
+  useEffect(()=>{
+    if(!locked){biometricAutoAttempted.current=false;return}
+    if(!canUseBiometric||biometricBusy||biometricAutoAttempted.current)return
+    biometricAutoAttempted.current=true
+    const timer=window.setTimeout(()=>{unlockBiometric()},120)
+    return()=>window.clearTimeout(timer)
+  },[locked,canUseBiometric])
+
   if(!security?.enabled||!locked)return null
   const unlock=async()=>{
     if(!security.salt||!security.pinHash)return
     const ok=(await hashPin(pin,security.salt))===security.pinHash
     if(ok){setLocked(false);setPin('');setError('')}else{setError('Incorrect PIN');setPin('')}
   }
-  const unlockBiometric=async()=>{
-    if(!security.biometricCredentialId)return
-    setBiometricBusy(true);setError('')
-    const ok=await authenticateLocalBiometric(security.biometricCredentialId)
-    setBiometricBusy(false)
-    if(ok){setLocked(false);setPin('');setError('')}else setError('Biometric unlock was cancelled or could not be verified. Use your PIN instead.')
-  }
-  const canUseBiometric=!!security.biometricEnabled&&!!security.biometricCredentialId&&biometricSupported
-  return <div className="appLockScreen"><div className="appLockCard"><div className="appLockLogo"><LockKeyhole/></div><span className="eyebrow">SPENZA</span><h1>Welcome back</h1><p>{canUseBiometric?'Unlock with Face ID / biometrics, or use your PIN.':'Enter your PIN to unlock your finances.'}</p>{canUseBiometric&&<button className="biometricUnlock" onClick={unlockBiometric} disabled={biometricBusy}><ShieldCheck/>{biometricBusy?'Waiting for device…':'Unlock with Face ID / Biometrics'}</button>}{canUseBiometric&&<div className="unlockDivider"><span>or use PIN</span></div>}<input type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={e=>{setPin(e.target.value.replace(/\D/g,''));setError('')}} onKeyDown={e=>{if(e.key==='Enter')unlock()}} placeholder="Enter PIN" autoFocus={!canUseBiometric}/>{error&&<div className="securityError">{error}</div>}<button className="primary" onClick={unlock}>Unlock Spenza</button></div></div>
+  return <div className="appLockScreen"><div className="appLockCard"><div className="appLockLogo"><LockKeyhole/></div><span className="eyebrow">SPENZA</span><h1>Welcome back</h1><p>{canUseBiometric?'Face ID / biometrics will open automatically. You can also use your PIN.':'Enter your PIN to unlock your finances.'}</p>{canUseBiometric&&<button className="biometricUnlock" onClick={unlockBiometric} disabled={biometricBusy}><ShieldCheck/>{biometricBusy?'Waiting for device…':'Try Face ID / Biometrics again'}</button>}{canUseBiometric&&<div className="unlockDivider"><span>or use PIN</span></div>}<input type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={e=>{setPin(e.target.value.replace(/\D/g,''));setError('')}} onKeyDown={e=>{if(e.key==='Enter')unlock()}} placeholder="Enter PIN" autoFocus={!canUseBiometric}/>{error&&<div className="securityError">{error}</div>}<button className="primary" onClick={unlock}>Unlock Spenza</button></div></div>
 }
