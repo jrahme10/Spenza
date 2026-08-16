@@ -1,0 +1,34 @@
+name: Persist Home account selection
+on:
+  push:
+    paths:
+      - '.github/workflows/persist-home-wallet.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Home wallet persistence
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/App.tsx')
+          s=p.read_text()
+          old=" const [homeWalletId,setHomeWalletId]=useState('')"
+          new=" const [homeWalletId,setHomeWalletId]=useState(()=>localStorage.getItem('spenza-home-wallet-id')||'')"
+          assert old in s, 'home wallet state anchor not found'
+          s=s.replace(old,new,1)
+
+          old=" useEffect(()=>{if(!homeWalletId&&data.wallets[0])setHomeWalletId(data.wallets[0].id);if(homeWalletId&&!data.wallets.some(w=>w.id===homeWalletId))setHomeWalletId(data.wallets[0]?.id||'')},[data.wallets,homeWalletId])"
+          new=" useEffect(()=>{if(!homeWalletId&&data.wallets[0]){setHomeWalletId(data.wallets[0].id);return}if(homeWalletId&&!data.wallets.some(w=>w.id===homeWalletId)){const fallback=data.wallets[0]?.id||'';setHomeWalletId(fallback);if(fallback)localStorage.setItem('spenza-home-wallet-id',fallback);else localStorage.removeItem('spenza-home-wallet-id')}},[data.wallets,homeWalletId])\n useEffect(()=>{if(homeWalletId)localStorage.setItem('spenza-home-wallet-id',homeWalletId);else localStorage.removeItem('spenza-home-wallet-id')},[homeWalletId])"
+          assert old in s, 'home wallet effect anchor not found'
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          git config user.name "Spenza Bot"
+          git config user.email "actions@github.com"
+          git add src/App.tsx
+          git commit -m "Remember last selected Home account"
+          git push
