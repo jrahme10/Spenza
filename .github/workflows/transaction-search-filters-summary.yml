@@ -19,12 +19,12 @@ jobs:
           state_anchor=" const [collapsedActivityGroups,setCollapsedActivityGroups]=useState<Set<string>>(()=>new Set())"
           assert state_anchor in s, 'activity group state anchor missing'
           if 'activitySearch,setActivitySearch' not in s:
-              state_add=state_anchor+"\n const [activitySearch,setActivitySearch]=useState('')\n const [activityAccountFilter,setActivityAccountFilter]=useState(()=>localStorage.getItem('spenza.activityAccountFilter')||'all')\n const [activityCategoryFilter,setActivityCategoryFilter]=useState(()=>localStorage.getItem('spenza.activityCategoryFilter')||'all')"
+              state_add=state_anchor+"\n const [activitySearch,setActivitySearch]=useState('')\n const [activityAccountFilter,setActivityAccountFilter]=useState(()=>localStorage.getItem('spenza-activity-account')||'all')\n const [activityCategoryFilter,setActivityCategoryFilter]=useState(()=>localStorage.getItem('spenza-activity-category')||'all')"
               s=s.replace(state_anchor,state_add,1)
-          effect_anchor=" useEffect(()=>{localStorage.setItem('spenza.activityTypeFilter',activityTypeFilter)},[activityTypeFilter])"
+          effect_anchor=" useEffect(()=>{localStorage.setItem('spenza-activity-type',activityTypeFilter)},[activityTypeFilter])"
           assert effect_anchor in s, 'activity type persistence effect anchor missing'
-          if "localStorage.setItem('spenza.activityAccountFilter'" not in s:
-              effect_add=effect_anchor+"\n useEffect(()=>{localStorage.setItem('spenza.activityAccountFilter',activityAccountFilter)},[activityAccountFilter])\n useEffect(()=>{localStorage.setItem('spenza.activityCategoryFilter',activityCategoryFilter)},[activityCategoryFilter])"
+          if "localStorage.setItem('spenza-activity-account'" not in s:
+              effect_add=effect_anchor+"\n useEffect(()=>{localStorage.setItem('spenza-activity-account',activityAccountFilter)},[activityAccountFilter])\n useEffect(()=>{localStorage.setItem('spenza-activity-category',activityCategoryFilter)},[activityCategoryFilter])"
               s=s.replace(effect_anchor,effect_add,1)
           old=" const activityTransactions=(activityWalletId?data.transactions.filter(t=>t.walletId===activityWalletId||t.toWalletId===activityWalletId):data.transactions).filter(t=>(activityTypeFilter==='all'||t.type===activityTypeFilter)&&inActivityPeriod(t.date)).slice().sort(newestTransactionFirst)"
           assert old in s, 'activity transactions anchor missing'
@@ -44,13 +44,8 @@ jobs:
           insert='<div className="activityAdvancedFilters"><label className="activitySearch"><Search size={14}/><input value={activitySearch} onChange={e=>setActivitySearch(e.target.value)} placeholder="Search transactions" inputMode="search"/></label><div className="activitySelectFilters"><label><span>Account</span><select value={activityAccountFilter} onChange={e=>setActivityAccountFilter(e.target.value)}><option value="all">All accounts</option>{data.wallets.map(w=><option key={w.id} value={w.id}>{w.name} ({w.currency})</option>)}</select></label><label><span>Category</span><select value={activityCategoryFilter} onChange={e=>setActivityCategoryFilter(e.target.value)}><option value="all">All categories</option>{data.categories.map(c=><option key={c} value={c}>{c}</option>)}</select></label></div></div><div className="activitySummary"><article><span>Income</span><strong>{activityDisplayCurrency?money(activityIncome,activityDisplayCurrency):activityIncome.toLocaleString()}</strong></article><article><span>Expense</span><strong>{activityDisplayCurrency?money(activityExpense,activityDisplayCurrency):activityExpense.toLocaleString()}</strong></article><article><span>Net</span><strong className={activityNet>=0?\'positive\':\'\'}>{activityDisplayCurrency?money(activityNet,activityDisplayCurrency):activityNet.toLocaleString()}</strong></article></div>'
           block=block.replace(marker,insert+marker,1)
           s=s[:start]+block+s[end:]
-          first=s.split('\n',1)[0]
-          if 'Search' not in first and 'lucide-react' in first:
-              if 'CalendarClock,' in first:
-                  first=first.replace('CalendarClock,','CalendarClock, Search,',1)
-              elif 'CalendarClock' in first:
-                  first=first.replace('CalendarClock','CalendarClock, Search',1)
-              s=first+'\n'+s.split('\n',1)[1]
+          if ' Search,' not in s.split('\n')[1] and ', Search ' not in s.split('\n')[1]:
+              s=s.replace('CalendarClock, Check','CalendarClock, Search, Check',1)
           p.write_text(s)
           css=Path('src/spenza-layout.css')
           cs=css.read_text()
