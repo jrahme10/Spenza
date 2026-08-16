@@ -1,0 +1,41 @@
+name: Fix async confirmation dialog
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-async-dialog.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch async confirmation flow
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/App.tsx')
+          s=p.read_text()
+
+          old=" const [dialog,setDialog]=useState<Dialog|null>(null)"
+          new=" const [dialog,setDialog]=useState<Dialog|null>(null)\n const [dialogBusy,setDialogBusy]=useState(false)"
+          assert old in s, 'dialog state anchor not found'
+          s=s.replace(old,new,1)
+
+          old=" const confirmDialog=()=>{dialog?.onConfirm?.();setDialog(null)}"
+          new=" const confirmDialog=async()=>{const action=dialog?.onConfirm;if(!action||dialogBusy)return;setDialogBusy(true);try{await action();setDialog(current=>current?.onConfirm===action?null:current)}finally{setDialogBusy(false)}}"
+          assert old in s, 'confirmDialog anchor not found'
+          s=s.replace(old,new,1)
+
+          old="{dialog&&<div className=\"dialogOverlay\" onClick={()=>setDialog(null)}><div className=\"dialogCard\" onClick={e=>e.stopPropagation()}><div className={`dialogIcon ${dialog.kind==='danger'?'dangerIcon':'infoIcon'}`}>{dialog.kind==='danger'?<AlertTriangle/>:<Check/>}</div><h2>{dialog.title}</h2><p>{dialog.message}</p><div className=\"dialogActions\"><button className=\"dialogCancel\" onClick={()=>setDialog(null)}>{dialog.onConfirm?'Cancel':'Got it'}</button>{dialog.onConfirm&&<button className=\"dialogConfirm\" onClick={confirmDialog}>{dialog.confirmLabel||'Confirm'}</button>}</div></div></div>}"
+          new="{dialog&&<div className=\"dialogOverlay\" onClick={()=>{if(!dialogBusy)setDialog(null)}}><div className=\"dialogCard\" onClick={e=>e.stopPropagation()}><div className={`dialogIcon ${dialog.kind==='danger'?'dangerIcon':'infoIcon'}`}>{dialog.kind==='danger'?<AlertTriangle/>:<Check/>}</div><h2>{dialogBusy?'Deleting…':dialog.title}</h2><p>{dialog.message}</p><div className=\"dialogActions\"><button className=\"dialogCancel\" disabled={dialogBusy} onClick={()=>setDialog(null)}>{dialog.onConfirm?'Cancel':'Got it'}</button>{dialog.onConfirm&&<button className=\"dialogConfirm\" disabled={dialogBusy} onClick={confirmDialog}>{dialogBusy?'Deleting…':dialog.confirmLabel||'Confirm'}</button>}</div></div></div>}"
+          assert old in s, 'dialog render anchor not found'
+          s=s.replace(old,new,1)
+
+          p.write_text(s)
+          PY
+          git config user.name "Spenza Bot"
+          git config user.email "actions@github.com"
+          git add src/App.tsx
+          git commit -m "Fix async confirmation flow for account deletion"
+          git push
