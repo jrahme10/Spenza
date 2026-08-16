@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { CalendarClock, Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Bill, BillRecurrence, BillReminder, Currency, SpenzaData, Transaction, uid } from '../lib/db'
+import { localRepository } from '../lib/repository'
 
 type Props = {
   data: SpenzaData
@@ -46,7 +47,7 @@ export default function BillsManager({data,setData}:Props){
 
   const openNew=()=>setForm({name:'',amount:'',walletId:data.wallets[0]?.id||'',category:data.categories.includes('Bills')?'Bills':data.categories[0]||'Other',dueDate:today(),recurrence:'monthly',reminderDays:3,note:''})
   const openEdit=(b:Bill)=>setForm({id:b.id,name:b.name,amount:String(b.amount),walletId:b.walletId,category:b.category,dueDate:b.dueDate,recurrence:b.recurrence,reminderDays:b.reminderDays,note:b.note||''})
-  const save=()=>{
+  const save=async()=>{
     if(!form) return
     const amount=Number(form.amount)
     if(!form.name.trim()||!form.walletId||!amount||amount<=0||!form.dueDate) return
@@ -54,20 +55,27 @@ export default function BillsManager({data,setData}:Props){
     const existing=data.bills.find(b=>b.id===form.id)
     const scheduleChanged=!!existing&&(existing.dueDate!==form.dueDate||existing.recurrence!==form.recurrence)
     const bill:Bill={id:form.id||uid(),name:form.name.trim(),amount,walletId:form.walletId,category:form.category,dueDate:form.dueDate,recurrence:form.recurrence,reminderDays:form.reminderDays,note:form.note.trim()||undefined,lastPaidDate:scheduleChanged?undefined:existing?.lastPaidDate,createdAt:existing?.createdAt||now,updatedAt:now}
-    setData(d=>({...d,bills:form.id?d.bills.map(b=>b.id===form.id?bill:b):[...d.bills,bill]}))
+    const next=await localRepository.upsertBill(bill)
+    setData(next)
     setForm(null)
   }
-  const remove=(id:string)=>{if(!window.confirm('Delete this bill?'))return;setData(d=>({...d,bills:d.bills.filter(b=>b.id!==id)}))}
-  const markPaid=(bill:Bill)=>{
+  const remove=async(id:string)=>{if(!window.confirm('Delete this bill?'))return;const next=await localRepository.deleteBill(id);setData(next)}
+  const markPaid=async(bill:Bill)=>{
     if(payingBills.current.has(bill.id)||!isPayable(bill)) return
     const wallet=data.wallets.find(w=>w.id===bill.walletId)
     if(!wallet) return
     payingBills.current.add(bill.id)
-    const paidDate=today()
-    const now=new Date().toISOString()
-    const tx:Transaction={id:uid(),type:'expense',title:bill.name,category:bill.category,amount:bill.amount,walletId:bill.walletId,date:paidDate,note:bill.note?`${bill.note} · Paid from Bills`:'Paid from Bills',createdAt:now,updatedAt:now}
-    setData(d=>({...d,transactions:[tx,...d.transactions],bills:d.bills.map(b=>b.id!==bill.id?b:{...b,lastPaidDate:paidDate,dueDate:b.recurrence==='once'?b.dueDate:nextDueDate(b.dueDate,b.recurrence),updatedAt:now})}))
-    window.setTimeout(()=>payingBills.current.delete(bill.id),750)
+    try{
+      const paidDate=today()
+      const now=new Date().toISOString()
+      const tx:Transaction={id:uid(),type:'expense',title:bill.name,category:bill.category,amount:bill.amount,walletId:bill.walletId,date:paidDate,note:bill.note?`${bill.note} · Paid from Bills`:'Paid from Bills',createdAt:now,updatedAt:now}
+      await localRepository.upsertTransaction(tx)
+      const updatedBill:Bill={...bill,lastPaidDate:paidDate,dueDate:bill.recurrence==='once'?bill.dueDate:nextDueDate(bill.dueDate,bill.recurrence),updatedAt:now}
+      const next=await localRepository.upsertBill(updatedBill)
+      setData(next)
+    } finally {
+      window.setTimeout(()=>payingBills.current.delete(bill.id),750)
+    }
   }
 
   return <section className="page refPage billsPage">
