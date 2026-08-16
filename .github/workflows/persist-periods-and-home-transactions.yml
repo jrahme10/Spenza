@@ -1,0 +1,66 @@
+name: Persist periods and show all Home transactions
+on:
+  push:
+    paths:
+      - '.github/workflows/persist-periods-and-home-transactions.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply period persistence and Home transaction changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/App.tsx')
+          s=p.read_text()
+
+          replacements={
+          " const [activityPeriod,setActivityPeriod]=useState<HomePeriod>('monthly')":" const [activityPeriod,setActivityPeriod]=useState<HomePeriod>(()=>{const v=localStorage.getItem('spenza-activity-period') as HomePeriod|null;return v&&['daily','monthly','yearly','custom'].includes(v)?v:'daily'})",
+          " const [activityDate,setActivityDate]=useState(today())":" const [activityDate,setActivityDate]=useState(()=>localStorage.getItem('spenza-activity-date')||today())",
+          " const [insightPeriod,setInsightPeriod]=useState<InsightPeriod>('monthly')":" const [insightPeriod,setInsightPeriod]=useState<InsightPeriod>(()=>{const v=localStorage.getItem('spenza-insight-period') as InsightPeriod|null;return v&&['daily','monthly','yearly'].includes(v)?v:'daily'})",
+          " const [insightDate,setInsightDate]=useState(today())":" const [insightDate,setInsightDate]=useState(()=>localStorage.getItem('spenza-insight-date')||today())",
+          " const [homePeriod,setHomePeriod]=useState<HomePeriod>('monthly')":" const [homePeriod,setHomePeriod]=useState<HomePeriod>(()=>{const v=localStorage.getItem('spenza-home-period') as HomePeriod|null;return v&&['daily','monthly','yearly','custom'].includes(v)?v:'daily'})",
+          " const [homeDate,setHomeDate]=useState(today())":" const [homeDate,setHomeDate]=useState(()=>localStorage.getItem('spenza-home-date')||today())",
+          }
+          for old,new in replacements.items():
+              assert old in s, f'missing state anchor: {old}'
+              s=s.replace(old,new,1)
+
+          effect_anchor=" useEffect(()=>{if(homeWalletId)localStorage.setItem('spenza-home-wallet-id',homeWalletId);else localStorage.removeItem('spenza-home-wallet-id')},[homeWalletId])"
+          assert effect_anchor in s, 'home wallet persistence anchor missing'
+          persistence=effect_anchor+"\n useEffect(()=>{localStorage.setItem('spenza-home-period',homePeriod);localStorage.setItem('spenza-home-date',homeDate)},[homePeriod,homeDate])\n useEffect(()=>{localStorage.setItem('spenza-activity-period',activityPeriod);localStorage.setItem('spenza-activity-date',activityDate)},[activityPeriod,activityDate])\n useEffect(()=>{localStorage.setItem('spenza-insight-period',insightPeriod);localStorage.setItem('spenza-insight-date',insightDate)},[insightPeriod,insightDate])"
+          s=s.replace(effect_anchor,persistence,1)
+
+          old_home=" const homePeriodTx=homeWallet?data.transactions.filter(t=>(t.walletId===homeWallet.id||t.toWalletId===homeWallet.id)&&inHomePeriod(t.date)):[]"
+          new_home=" const homePeriodTx=homeWallet?data.transactions.filter(t=>(t.walletId===homeWallet.id||t.toWalletId===homeWallet.id)&&inHomePeriod(t.date)).slice().sort((a,b)=>b.date.localeCompare(a.date)||String(b.createdAt||b.updatedAt||'').localeCompare(String(a.createdAt||a.updatedAt||''))):[]"
+          assert old_home in s, 'home transaction source anchor missing'
+          s=s.replace(old_home,new_home,1)
+
+          old_recent="{homePeriodTx.length?homePeriodTx.slice(0,4).map(t=><TxRow t={t} key={t.id}/>):<div className=\"empty compact\">No transactions for this account and period.</div>}"
+          new_recent="{homePeriodTx.length?homePeriodTx.map(t=><TxRow t={t} key={t.id}/>):<div className=\"empty compact\">No transactions for this account and period.</div>}"
+          assert old_recent in s, 'Home recent transaction limit anchor missing'
+          s=s.replace(old_recent,new_recent,1)
+
+          # Verify old add-transaction handlers have not returned to the Transactions page.
+          activity_start=s.index("{tab==='Activity'")
+          activity_end=s.index("{tab==='Wallets'",activity_start)
+          activity=s[activity_start:activity_end]
+          assert "setActivityTypeFilter('income')" in activity
+          assert "setActivityTypeFilter('expense')" in activity
+          assert "setActivityTypeFilter('transfer')" in activity
+          assert "setType('income');setOpen(true)" not in activity
+          assert "setType('expense');setOpen(true)" not in activity
+          assert "setType('transfer');setOpen(true)" not in activity
+
+          p.write_text(s)
+          PY
+          npm install --no-audit --no-fund
+          npm run build
+          git config user.name "Spenza Bot"
+          git config user.email "actions@github.com"
+          git add src/App.tsx
+          git commit -m "Persist period filters and show all matching Home transactions"
+          git push
