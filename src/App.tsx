@@ -28,7 +28,7 @@ export default function App(){
  const [insightCategory,setInsightCategory]=useState('all')
  const [insightPeriod,setInsightPeriod]=useState<InsightPeriod>('monthly')
  const [insightDate,setInsightDate]=useState(today())
- const [homeWalletId,setHomeWalletId]=useState('')
+ const [homeWalletId,setHomeWalletId]=useState(()=>localStorage.getItem('spenza-home-wallet-id')||'')
  const [homePeriod,setHomePeriod]=useState<HomePeriod>('monthly')
  const [homeDate,setHomeDate]=useState(today())
  const [rateInput,setRateInput]=useState(String(defaultData.usdToLbpRate||89500))
@@ -51,7 +51,8 @@ export default function App(){
  useEffect(()=>{loadData().then(d=>{setData(d);setRateInput(String(d.usdToLbpRate||89500));setReady(true)}).catch(()=>setReady(true))},[])
  useEffect(()=>{if(ready)saveData(data)},[data,ready])
  useEffect(()=>{if(!insightWalletId&&data.wallets[0])setInsightWalletId(data.wallets[0].id);if(insightWalletId&&!data.wallets.some(w=>w.id===insightWalletId))setInsightWalletId(data.wallets[0]?.id||'')},[data.wallets,insightWalletId])
- useEffect(()=>{if(!homeWalletId&&data.wallets[0])setHomeWalletId(data.wallets[0].id);if(homeWalletId&&!data.wallets.some(w=>w.id===homeWalletId))setHomeWalletId(data.wallets[0]?.id||'')},[data.wallets,homeWalletId])
+ useEffect(()=>{if(!homeWalletId&&data.wallets[0]){setHomeWalletId(data.wallets[0].id);return}if(homeWalletId&&!data.wallets.some(w=>w.id===homeWalletId)){const fallback=data.wallets[0]?.id||'';setHomeWalletId(fallback);if(fallback)localStorage.setItem('spenza-home-wallet-id',fallback);else localStorage.removeItem('spenza-home-wallet-id')}},[data.wallets,homeWalletId])
+ useEffect(()=>{if(homeWalletId)localStorage.setItem('spenza-home-wallet-id',homeWalletId);else localStorage.removeItem('spenza-home-wallet-id')},[homeWalletId])
  const rate=data.usdToLbpRate||89500
  const convert=(value:number,from:Currency,to:Currency)=>from===to?value:from==='USD'?value*rate:value/rate
  const normalize=(value:number,currency:Currency)=>currency==='LBP'?Math.round(value):Math.round(value*100)/100
