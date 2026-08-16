@@ -1,0 +1,30 @@
+name: Fix wallet action layer
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-wallet-action-layer.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix wallet action click layer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/spenza-layout.css')
+          s=p.read_text()
+          old='.accountTile:after,.refWalletGrid article:after{content:"";position:absolute;width:95px;height:95px;border-radius:50%;background:rgba(255,255,255,.08);right:-35px;top:-38px}'
+          new='.accountTile:after,.refWalletGrid article:after{content:"";position:absolute;width:95px;height:95px;border-radius:50%;background:rgba(255,255,255,.08);right:-35px;top:-38px;pointer-events:none;z-index:0}.refWalletGrid article>*{position:relative;z-index:1}.refWalletGrid .walletActions{position:relative;z-index:3}.refWalletGrid .walletActions button{position:relative;z-index:4;pointer-events:auto;touch-action:manipulation}'
+          assert old in s, 'decorative wallet layer anchor not found'
+          p.write_text(s.replace(old,new,1))
+          PY
+          npm ci
+          npm run build
+          git config user.name "Spenza Bot"
+          git config user.email "actions@github.com"
+          git add src/spenza-layout.css
+          git commit -m "Fix wallet edit and delete button click layer"
+          git push
