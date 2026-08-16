@@ -1,0 +1,54 @@
+name: Transaction period filters
+on:
+  push:
+    paths:
+      - '.github/workflows/transaction-period-filters.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add type and period filters to Transactions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/App.tsx')
+          s=p.read_text()
+
+          state_anchor=" const [activityWalletId,setActivityWalletId]=useState<string|null>(null)"
+          state_new=state_anchor+"\n const [activityTypeFilter,setActivityTypeFilter]=useState<'all'|TransactionType>('all')\n const [activityPeriod,setActivityPeriod]=useState<HomePeriod>('monthly')\n const [activityDate,setActivityDate]=useState(today())"
+          assert state_anchor in s, 'activity state anchor not found'
+          s=s.replace(state_anchor,state_new,1)
+
+          helper_anchor=" const inInsightPeriod=(txDate:string)=>{if(insightPeriod==='daily')return txDate===insightDate;if(insightPeriod==='monthly')return txDate.slice(0,7)===insightDate.slice(0,7);return txDate.slice(0,4)===insightDate.slice(0,4)}"
+          helper_new=helper_anchor+"\n const inActivityPeriod=(txDate:string)=>{if(activityPeriod==='daily'||activityPeriod==='custom')return txDate===activityDate;if(activityPeriod==='monthly')return txDate.slice(0,7)===activityDate.slice(0,7);return txDate.slice(0,4)===activityDate.slice(0,4)}"
+          assert helper_anchor in s, 'period helper anchor not found'
+          s=s.replace(helper_anchor,helper_new,1)
+
+          old_activity=" const activityTransactions=activityWalletId?data.transactions.filter(t=>t.walletId===activityWalletId||t.toWalletId===activityWalletId):data.transactions"
+          new_activity=" const activityTransactions=(activityWalletId?data.transactions.filter(t=>t.walletId===activityWalletId||t.toWalletId===activityWalletId):data.transactions).filter(t=>(activityTypeFilter==='all'||t.type===activityTypeFilter)&&inActivityPeriod(t.date)).slice().sort((a,b)=>b.date.localeCompare(a.date)||String(b.createdAt||b.updatedAt||'').localeCompare(String(a.createdAt||a.updatedAt||'')))"
+          assert old_activity in s, 'activity list anchor not found'
+          s=s.replace(old_activity,new_activity,1)
+
+          old_filters='''<div className="filters refFilters"><button className={!activityWalletId?'selected':''} onClick={()=>setActivityWalletId(null)}>All</button><button onClick={()=>{resetForm();setType('income');setOpen(true)}}>Income</button><button onClick={()=>{resetForm();setType('expense');setOpen(true)}}>Expense</button><button onClick={()=>{resetForm();setType('transfer');setOpen(true)}}>Transfer</button></div>'''
+          new_filters='''<div className="filters refFilters"><button className={activityTypeFilter==='all'?'selected':''} onClick={()=>setActivityTypeFilter('all')}>All</button><button className={activityTypeFilter==='income'?'selected':''} onClick={()=>setActivityTypeFilter('income')}>Income</button><button className={activityTypeFilter==='expense'?'selected':''} onClick={()=>setActivityTypeFilter('expense')}>Expense</button><button className={activityTypeFilter==='transfer'?'selected':''} onClick={()=>setActivityTypeFilter('transfer')}>Transfer</button></div><div className="filters refFilters periodFilters activityPeriodFilters">{(['daily','monthly','yearly'] as InsightPeriod[]).map(p=><button key={p} className={activityPeriod===p?'selected':''} onClick={()=>setActivityPeriod(p)}>{p}</button>)}<label className={`activityCustomDate ${activityPeriod==='custom'?'selected':''}`}>Custom<input type="date" value={activityDate} onClick={()=>setActivityPeriod('custom')} onChange={e=>{if(e.target.value)setActivityDate(e.target.value);setActivityPeriod('custom')}} aria-label="Choose transaction date"/></label></div>'''
+          assert old_filters in s, 'activity filter controls anchor not found'
+          s=s.replace(old_filters,new_filters,1)
+          p.write_text(s)
+
+          css=Path('src/spenza-layout.css')
+          cs=css.read_text()
+          marker='/* activity-period-filter */'
+          if marker not in cs:
+              cs += '''\n/* activity-period-filter */\n.activityPeriodFilters{position:relative;max-width:330px!important;margin-top:-6px!important}.activityCustomDate{position:relative;display:inline-flex;align-items:center;justify-content:center;padding:7px 11px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:9px;font-weight:700;overflow:hidden;cursor:pointer}.activityCustomDate.selected{background:rgba(24,223,177,.14);color:var(--accent);border-color:rgba(24,223,177,.35)}.activityCustomDate input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;pointer-events:auto}\n'''
+          css.write_text(cs)
+          PY
+          npm ci
+          npm run build
+          git config user.name "Spenza Bot"
+          git config user.email "actions@github.com"
+          git add src/App.tsx src/spenza-layout.css
+          git commit -m "Add transaction type and period filters"
+          git push
