@@ -28,7 +28,7 @@ jobs:
           assert old in a, 'wallet action buttons anchor not found'
           app.write_text(a.replace(old,new,1))
           PY
-          npm ci
+          npm install --no-audit --no-fund
           npm run build
           git config user.name "Spenza Bot"
           git config user.email "actions@github.com"
