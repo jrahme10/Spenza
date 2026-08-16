@@ -7,6 +7,13 @@ function env(name:string){
   return values[name]?.trim()
 }
 
+function authRedirectUrl(){
+  const configured=env('VITE_SUPABASE_REDIRECT_URL')
+  if(configured)return configured
+  if(typeof window==='undefined')return undefined
+  return new URL(import.meta.env.BASE_URL || '/',window.location.origin).toString()
+}
+
 export function isSupabaseConfigured(){
   return !!env('VITE_SUPABASE_URL') && !!(env('VITE_SUPABASE_PUBLISHABLE_KEY') || env('VITE_SUPABASE_ANON_KEY'))
 }
@@ -31,7 +38,8 @@ export async function getSupabaseUserId(){
 export async function signInWithEmailOtp(email:string){
   const supabase=getSupabaseClient()
   if(!supabase)throw new Error('Supabase is not configured')
-  const {data,error}=await supabase.auth.signInWithOtp({email})
+  const emailRedirectTo=authRedirectUrl()
+  const {data,error}=await supabase.auth.signInWithOtp({email,options:emailRedirectTo?{emailRedirectTo}:undefined})
   if(error)throw error
   return data
 }
