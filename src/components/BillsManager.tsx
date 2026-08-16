@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { CalendarClock, Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Bill, BillRecurrence, BillReminder, Currency, SpenzaData, Transaction, uid } from '../lib/db'
 
@@ -39,6 +39,7 @@ function isPayable(bill:Bill){
 export default function BillsManager({data,setData}:Props){
   const [form,setForm]=useState<BillForm|null>(null)
   const [filter,setFilter]=useState<'all'|'upcoming'|'overdue'>('all')
+  const payingBills=useRef(new Set<string>())
 
   const sorted=useMemo(()=>[...data.bills].sort((a,b)=>a.dueDate.localeCompare(b.dueDate)),[data.bills])
   const visible=sorted.filter(b=>filter==='all'||(filter==='overdue'?b.dueDate<today()&&isPayable(b):b.dueDate>=today()))
@@ -58,13 +59,15 @@ export default function BillsManager({data,setData}:Props){
   }
   const remove=(id:string)=>{if(!window.confirm('Delete this bill?'))return;setData(d=>({...d,bills:d.bills.filter(b=>b.id!==id)}))}
   const markPaid=(bill:Bill)=>{
-    if(!isPayable(bill)) return
+    if(payingBills.current.has(bill.id)||!isPayable(bill)) return
     const wallet=data.wallets.find(w=>w.id===bill.walletId)
     if(!wallet) return
+    payingBills.current.add(bill.id)
     const paidDate=today()
     const now=new Date().toISOString()
     const tx:Transaction={id:uid(),type:'expense',title:bill.name,category:bill.category,amount:bill.amount,walletId:bill.walletId,date:paidDate,note:bill.note?`${bill.note} · Paid from Bills`:'Paid from Bills',createdAt:now,updatedAt:now}
     setData(d=>({...d,transactions:[tx,...d.transactions],bills:d.bills.map(b=>b.id!==bill.id?b:{...b,lastPaidDate:paidDate,dueDate:b.recurrence==='once'?b.dueDate:nextDueDate(b.dueDate,b.recurrence),updatedAt:now})}))
+    window.setTimeout(()=>payingBills.current.delete(bill.id),750)
   }
 
   return <section className="page refPage billsPage">
