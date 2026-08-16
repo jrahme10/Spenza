@@ -15,6 +15,7 @@ import './reset-danger.css'
 import './center-add.css'
 import './mobile-safe.css'
 import './security-notifications.css'
+import './cloud-sync.css'
 import { registerPwa } from './lib/pwa'
 import { syncSupabaseIfAuthenticated } from './lib/supabaseSync'
 
