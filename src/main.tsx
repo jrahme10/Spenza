@@ -41,11 +41,34 @@ function installReconnectSync(){
   window.setInterval(()=>{if(document.visibilityState==='visible')void syncPending(false)},15000)
 }
 
-async function bootstrap(){
+function bootstrap(){
   initTheme()
-  await syncManager.run().catch(()=>undefined)
-  ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App/><SyncStatusPill/></React.StrictMode>)
-  installReconnectSync();initDynamicGreeting();registerPwa()
+
+  // Always render local IndexedDB data immediately. Cloud sync must never block
+  // startup: after a large import there may be hundreds of queued records to upload.
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <App/>
+      <SyncStatusPill/>
+    </React.StrictMode>,
+  )
+
+  installReconnectSync()
+  initDynamicGreeting()
+  registerPwa()
+
+  // Start the cloud reconciliation only after the app is visible. Imported data
+  // therefore remains usable while its queued changes upload in the background.
+  void (async()=>{
+    try{
+      const before=await loadData()
+      const beforeFingerprint=financialFingerprint(before)
+      const result=await syncManager.run()
+      if(result.status==='synced'&&result.data&&beforeFingerprint!==financialFingerprint(result.data))window.location.reload()
+    }catch{
+      // The global sync manager exposes the failure state; local app startup stays usable.
+    }
+  })()
 }
 
-void bootstrap()
+bootstrap()
