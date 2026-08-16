@@ -17,7 +17,7 @@ jobs:
 
           css=Path('src/spenza-layout.css')
           s=css.read_text()
-          hardening='''\n/* Wallet action hitbox hardening */\n.refWalletGrid article{isolation:isolate!important}\n.refWalletGrid article::after{display:none!important;pointer-events:none!important}\n.refWalletGrid .walletCardTop{position:relative!important;z-index:50!important;pointer-events:auto!important}\n.refWalletGrid .walletActions{position:relative!important;z-index:60!important;pointer-events:auto!important}\n.refWalletGrid .walletActions button,.refWalletGrid .walletEdit,.refWalletGrid .walletDelete{position:relative!important;z-index:70!important;pointer-events:auto!important;touch-action:manipulation!important}\n'''
+          hardening='''\n/* Wallet action hitbox hardening */\n.refWalletGrid article{isolation:isolate!important}\n.refWalletGrid article::after{display:none!important;pointer-events:none!important}\n.refWalletGrid .walletCardTop{position:relative!important;z-index:50!important;pointer-events:auto!important}\n.refWalletGrid .walletActions{position:relative!important;z-index:60!important;pointer-events:auto!important}\n.refWalletGrid .walletActions button,.refWalletGrid .walletEdit,.refWalletGrid .walletDelete{position:relative!important;z-index:70!important;pointer-events:auto!important;touch-action:manipulation!important}\n.refWalletGrid .walletActions button svg{pointer-events:none!important}\n'''
           if 'Wallet action hitbox hardening' not in s:
               css.write_text(s+hardening)
 
@@ -34,4 +34,5 @@ jobs:
           git config user.email "actions@github.com"
           git add src/App.tsx src/spenza-layout.css
           git commit -m "Fix account delete button hitbox on mobile"
+          git pull --rebase origin main
           git push
