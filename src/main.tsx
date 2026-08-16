@@ -34,31 +34,29 @@ function installReconnectSync(){
   }
   const scheduleSync=(force=false,delay=600)=>{if(retryTimer)window.clearTimeout(retryTimer);retryTimer=window.setTimeout(()=>{void syncPending(force)},delay)}
   const onOnline=()=>scheduleSync(true,500)
-  const onFocus=()=>scheduleSync(false,350)
-  const onPageShow=()=>scheduleSync(false,350)
-  const onVisibility=()=>{if(document.visibilityState==='visible')scheduleSync(false,350)}
-  window.addEventListener('online',onOnline);window.addEventListener('focus',onFocus);window.addEventListener('pageshow',onPageShow);document.addEventListener('visibilitychange',onVisibility)
+  const onFocus=()=>scheduleSync(true,250)
+  const onPageShow=()=>scheduleSync(true,250)
+  const onVisibility=()=>{if(document.visibilityState==='visible')scheduleSync(true,250)}
+  const onResume=()=>scheduleSync(true,250)
+  window.addEventListener('online',onOnline)
+  window.addEventListener('focus',onFocus)
+  window.addEventListener('pageshow',onPageShow)
+  window.addEventListener('resume',onResume)
+  document.addEventListener('visibilitychange',onVisibility)
   window.setInterval(()=>{if(document.visibilityState==='visible')void syncPending(false)},15000)
 }
 
 function bootstrap(){
   initTheme()
-
-  // Always render local IndexedDB data immediately. Cloud sync must never block
-  // startup: after a large import there may be hundreds of queued records to upload.
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <App/>
       <SyncStatusPill/>
     </React.StrictMode>,
   )
-
   installReconnectSync()
   initDynamicGreeting()
   registerPwa()
-
-  // Start the cloud reconciliation only after the app is visible. Imported data
-  // therefore remains usable while its queued changes upload in the background.
   void (async()=>{
     try{
       const before=await loadData()
@@ -66,7 +64,7 @@ function bootstrap(){
       const result=await syncManager.run()
       if(result.status==='synced'&&result.data&&beforeFingerprint!==financialFingerprint(result.data))window.location.reload()
     }catch{
-      // The global sync manager exposes the failure state; local app startup stays usable.
+      // Sync state is exposed globally; local data stays available.
     }
   })()
 }
