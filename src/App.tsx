@@ -25,15 +25,15 @@ export default function App(){
  const [tab,setTab]=useState('Home')
  const [activityWalletId,setActivityWalletId]=useState<string|null>(null)
  const [activityTypeFilter,setActivityTypeFilter]=useState<'all'|TransactionType>('all')
- const [activityPeriod,setActivityPeriod]=useState<HomePeriod>('monthly')
- const [activityDate,setActivityDate]=useState(today())
+ const [activityPeriod,setActivityPeriod]=useState<HomePeriod>(()=>{const v=localStorage.getItem('spenza-activity-period') as HomePeriod|null;return v&&['daily','monthly','yearly','custom'].includes(v)?v:'daily'})
+ const [activityDate,setActivityDate]=useState(()=>localStorage.getItem('spenza-activity-date')||today())
  const [insightWalletId,setInsightWalletId]=useState('')
  const [insightCategory,setInsightCategory]=useState('all')
- const [insightPeriod,setInsightPeriod]=useState<InsightPeriod>('monthly')
- const [insightDate,setInsightDate]=useState(today())
+ const [insightPeriod,setInsightPeriod]=useState<InsightPeriod>(()=>{const v=localStorage.getItem('spenza-insight-period') as InsightPeriod|null;return v&&['daily','monthly','yearly'].includes(v)?v:'daily'})
+ const [insightDate,setInsightDate]=useState(()=>localStorage.getItem('spenza-insight-date')||today())
  const [homeWalletId,setHomeWalletId]=useState(()=>localStorage.getItem('spenza-home-wallet-id')||'')
- const [homePeriod,setHomePeriod]=useState<HomePeriod>('monthly')
- const [homeDate,setHomeDate]=useState(today())
+ const [homePeriod,setHomePeriod]=useState<HomePeriod>(()=>{const v=localStorage.getItem('spenza-home-period') as HomePeriod|null;return v&&['daily','monthly','yearly','custom'].includes(v)?v:'daily'})
+ const [homeDate,setHomeDate]=useState(()=>localStorage.getItem('spenza-home-date')||today())
  const [rateInput,setRateInput]=useState(String(defaultData.usdToLbpRate||89500))
  const [open,setOpen]=useState(false)
  const [editing,setEditing]=useState<string|null>(null)
@@ -56,6 +56,9 @@ export default function App(){
  useEffect(()=>{if(!insightWalletId&&data.wallets[0])setInsightWalletId(data.wallets[0].id);if(insightWalletId&&!data.wallets.some(w=>w.id===insightWalletId))setInsightWalletId(data.wallets[0]?.id||'')},[data.wallets,insightWalletId])
  useEffect(()=>{if(!homeWalletId&&data.wallets[0]){setHomeWalletId(data.wallets[0].id);return}if(homeWalletId&&!data.wallets.some(w=>w.id===homeWalletId)){const fallback=data.wallets[0]?.id||'';setHomeWalletId(fallback);if(fallback)localStorage.setItem('spenza-home-wallet-id',fallback);else localStorage.removeItem('spenza-home-wallet-id')}},[data.wallets,homeWalletId])
  useEffect(()=>{if(homeWalletId)localStorage.setItem('spenza-home-wallet-id',homeWalletId);else localStorage.removeItem('spenza-home-wallet-id')},[homeWalletId])
+ useEffect(()=>{localStorage.setItem('spenza-home-period',homePeriod);localStorage.setItem('spenza-home-date',homeDate)},[homePeriod,homeDate])
+ useEffect(()=>{localStorage.setItem('spenza-activity-period',activityPeriod);localStorage.setItem('spenza-activity-date',activityDate)},[activityPeriod,activityDate])
+ useEffect(()=>{localStorage.setItem('spenza-insight-period',insightPeriod);localStorage.setItem('spenza-insight-date',insightDate)},[insightPeriod,insightDate])
  const rate=data.usdToLbpRate||89500
  const convert=(value:number,from:Currency,to:Currency)=>from===to?value:from==='USD'?value*rate:value/rate
  const normalize=(value:number,currency:Currency)=>currency==='LBP'?Math.round(value):Math.round(value*100)/100
@@ -99,7 +102,7 @@ export default function App(){
  const shiftHomePeriod=(direction:number)=>{const d=new Date(`${homeDate}T12:00:00`);if(homePeriod==='daily'||homePeriod==='custom')d.setDate(d.getDate()+direction);else if(homePeriod==='monthly')d.setMonth(d.getMonth()+direction);else d.setFullYear(d.getFullYear()+direction);setHomeDate(d.toISOString().slice(0,10))}
  const homePeriodLabel=homePeriod==='daily'||homePeriod==='custom'?new Date(`${homeDate}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):homePeriod==='monthly'?new Date(`${homeDate.slice(0,7)}-01T12:00:00`).toLocaleDateString('en-US',{month:'long',year:'numeric'}):homeDate.slice(0,4)
  const homeWallet=data.wallets.find(w=>w.id===homeWalletId)||data.wallets[0]
- const homePeriodTx=homeWallet?data.transactions.filter(t=>(t.walletId===homeWallet.id||t.toWalletId===homeWallet.id)&&inHomePeriod(t.date)):[]
+ const homePeriodTx=homeWallet?data.transactions.filter(t=>(t.walletId===homeWallet.id||t.toWalletId===homeWallet.id)&&inHomePeriod(t.date)).slice().sort((a,b)=>b.date.localeCompare(a.date)||String(b.createdAt||b.updatedAt||'').localeCompare(String(a.createdAt||a.updatedAt||''))):[]
  const homeIncome=homePeriodTx.filter(t=>t.type==='income'&&t.walletId===homeWallet?.id).reduce((s,t)=>s+t.amount,0)
  const homeExpense=homePeriodTx.filter(t=>t.type==='expense'&&t.walletId===homeWallet?.id).reduce((s,t)=>s+t.amount,0)
  const homeTransferOut=homePeriodTx.filter(t=>t.type==='transfer'&&t.walletId===homeWallet?.id).reduce((s,t)=>s+t.amount,0)
@@ -122,7 +125,7 @@ export default function App(){
    <div className="refSectionHead"><h2>{homePeriodLabel} Overview</h2><button onClick={()=>{if(homeWallet)setInsightWalletId(homeWallet.id);setInsightPeriod(homePeriod==='custom'?'daily':homePeriod);setInsightDate(homeDate);setTab('Insights')}}>See All</button></div>
    <div className="overviewGrid"><article className="overviewIncome"><span>Total Income</span><strong>{homeWallet?money(homeIncome,homeWallet.currency):'—'}</strong><small>{homeWallet?`Expenses ${money(homeExpense,homeWallet.currency)}`:'Create a wallet first'}</small></article><article><span>Top Categories</span>{categoryTotals.slice(0,3).length?categoryTotals.slice(0,3).map(x=><div className="miniCategory" key={x.name}><span>{x.name}</span><b>{money(x.value,homeWallet?.currency||'USD')}</b></div>):<small>No spending yet</small>}</article></div>
    <article className="categoryPanel"><div className="refSectionHead compact"><h2>Expenses by Category</h2></div><div className="categoryChart"><div className="donut" style={{background:donutBackground}}><i/></div><div className="legend">{categoryTotals.slice(0,5).map((x,i)=><div key={x.name}><span><i style={{background:palette[i%palette.length]}}/>{x.name}</span><b>{categoryTotal?Math.round(x.value/categoryTotal*100):0}%</b></div>)}{!categoryTotals.length&&<small>No expense data yet</small>}</div></div></article>
-   <section className="activity homeActivity"><div className="refSectionHead"><h2>Recent Transactions</h2><button onClick={openAllActivity}>See All</button></div>{homePeriodTx.length?homePeriodTx.slice(0,4).map(t=><TxRow t={t} key={t.id}/>):<div className="empty compact">No transactions for this account and period.</div>}</section>
+   <section className="activity homeActivity"><div className="refSectionHead"><h2>Recent Transactions</h2><button onClick={openAllActivity}>See All</button></div>{homePeriodTx.length?homePeriodTx.map(t=><TxRow t={t} key={t.id}/>):<div className="empty compact">No transactions for this account and period.</div>}</section>
   </section>}
   {tab==='Activity'&&<section className="page refPage"><div className="centerPageHead"><h1>{activityWallet?.name||'Transactions'}</h1></div>{activityWallet&&<div className="accountSummary"><span>{activityWallet.currency} balance</span><strong>{money(walletBalance(activityWallet.id),activityWallet.currency)}</strong></div>}<div className="filters refFilters"><button className={activityTypeFilter==='all'?'selected':''} onClick={()=>setActivityTypeFilter('all')}>All</button><button className={activityTypeFilter==='income'?'selected':''} onClick={()=>setActivityTypeFilter('income')}>Income</button><button className={activityTypeFilter==='expense'?'selected':''} onClick={()=>setActivityTypeFilter('expense')}>Expense</button><button className={activityTypeFilter==='transfer'?'selected':''} onClick={()=>setActivityTypeFilter('transfer')}>Transfer</button></div><div className="filters refFilters periodFilters activityPeriodFilters">{(['daily','monthly','yearly'] as InsightPeriod[]).map(p=><button key={p} className={activityPeriod===p?'selected':''} onClick={()=>setActivityPeriod(p)}>{p}</button>)}<label className={`activityCustomDate ${activityPeriod==='custom'?'selected':''}`}>Custom<input type="date" value={activityDate} onClick={()=>setActivityPeriod('custom')} onChange={e=>{if(e.target.value)setActivityDate(e.target.value);setActivityPeriod('custom')}} aria-label="Choose transaction date"/></label></div><div className="groupedTransactions">{Object.entries(activityGroups).map(([d,items])=><section key={d}><h3>{d===today()?'Today':new Date(`${d}T00:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</h3>{items.map(t=><TxRow t={t} key={t.id}/>)}</section>)}{!activityTransactions.length&&<div className="empty">No transactions yet.</div>}</div></section>}
   {tab==='Wallets'&&<section className="page refPage"><div className="centerPageHead withAction"><h1>Accounts</h1><button className="iconAdd" onClick={addWallet}><Plus/></button></div>{data.wallets.length?<div className="walletGrid refWalletGrid">{data.wallets.map((w,i)=><article className={`accountTone${i%4}`} key={w.id}><div className="walletCardTop"><span>{w.currency}</span><div className="walletActions"><button className="walletEdit" onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();editWallet(w)}}><Pencil/></button><button className="walletDelete" onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();deleteWallet(w.id)}}><Trash2/></button></div></div><h2 onClick={()=>openWalletActivity(w.id)}>{w.name}</h2><strong onClick={()=>openWalletActivity(w.id)}>{money(walletBalance(w.id),w.currency)}</strong><small>Opening {money(w.openingBalance,w.currency)}</small></article>)}</div>:<div className="empty">No accounts yet.</div>}</section>}
