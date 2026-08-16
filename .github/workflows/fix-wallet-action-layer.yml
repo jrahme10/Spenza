@@ -21,7 +21,7 @@ jobs:
           assert old in s, 'decorative wallet layer anchor not found'
           p.write_text(s.replace(old,new,1))
           PY
-          npm ci
+          npm install --no-audit --no-fund
           npm run build
           git config user.name "Spenza Bot"
           git config user.email "actions@github.com"
