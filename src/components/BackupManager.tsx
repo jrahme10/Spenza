@@ -3,6 +3,7 @@ import { Download, Upload } from 'lucide-react'
 import { loadData, saveData, SpenzaData, SyncChange } from '../lib/db'
 
 type BackupFile={app:'Spenza';version:1;exportedAt:string;data:SpenzaData}
+type Props={onImported?:(data:SpenzaData)=>void}
 function isValidDate(value:unknown){return typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(Date.parse(`${value}T12:00:00`))}
 function isValidBackup(value:unknown):value is BackupFile{
  if(!value||typeof value!=='object')return false
@@ -21,23 +22,22 @@ function isValidBackup(value:unknown):value is BackupFile{
 }
 
 function prepareImportedDataForSync(data:SpenzaData):SpenzaData{
- const changedAt=new Date().toISOString()
+ const base=Date.now()
+ let index=0
+ const nextChangedAt=()=>new Date(base+(index++)).toISOString()
  const pendingChanges:SyncChange[]=[
-  ...data.wallets.map(wallet=>({entityType:'wallet' as const,entityId:wallet.id,operation:'upsert' as const,changedAt})),
-  ...data.transactions.map(transaction=>({entityType:'transaction' as const,entityId:transaction.id,operation:'upsert' as const,changedAt})),
-  ...(data.bills||[]).map(bill=>({entityType:'bill' as const,entityId:bill.id,operation:'upsert' as const,changedAt})),
+  ...data.wallets.map(wallet=>({entityType:'wallet' as const,entityId:wallet.id,operation:'upsert' as const,changedAt:nextChangedAt()})),
+  ...data.transactions.map(transaction=>({entityType:'transaction' as const,entityId:transaction.id,operation:'upsert' as const,changedAt:nextChangedAt()})),
+  ...(data.bills||[]).map(bill=>({entityType:'bill' as const,entityId:bill.id,operation:'upsert' as const,changedAt:nextChangedAt()})),
  ]
- return {
-  ...data,
-  bills:data.bills||[],
-  sync:{tombstones:[],pendingChanges,lastSyncAt:undefined},
- }
+ return {...data,bills:data.bills||[],sync:{tombstones:[],pendingChanges,lastSyncAt:undefined}}
 }
 
-export default function BackupManager(){
+export default function BackupManager({onImported}:Props){
  const inputRef=useRef<HTMLInputElement>(null)
  const [message,setMessage]=useState('')
+ const [importing,setImporting]=useState(false)
  const exportBackup=async()=>{try{const data=await loadData();const backup:BackupFile={app:'Spenza',version:1,exportedAt:new Date().toISOString(),data};const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`spenza-backup-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);setMessage('Backup exported successfully.')}catch{setMessage('Could not export the backup.')}}
- const importBackup=async(event:ChangeEvent<HTMLInputElement>)=>{const file=event.target.files?.[0];event.target.value='';if(!file)return;try{const parsed=JSON.parse(await file.text()) as unknown;if(!isValidBackup(parsed)){setMessage('This is not a valid Spenza backup file.');return}if(!window.confirm(`Import this Spenza backup?\n\n${parsed.data.wallets.length} wallets\n${parsed.data.transactions.length} transactions\n\nThis will replace the data currently stored on this device.`))return;const imported=prepareImportedDataForSync(parsed.data);await saveData(imported);setMessage(`Backup imported. ${imported.sync.pendingChanges.length} cloud change${imported.sync.pendingChanges.length===1?'':'s'} queued. Reloading Spenza…`);setTimeout(()=>window.location.reload(),500)}catch{setMessage('Could not read this backup file.')}}
- return <section className="backup-settings"><div><h2>Backup & restore</h2><p>Export your local Spenza data or restore a backup on this device.</p></div><div className="backup-settings-actions"><button onClick={exportBackup}><Download size={17}/><span><b>Export backup</b><small>Download JSON backup</small></span></button><button onClick={()=>inputRef.current?.click()}><Upload size={17}/><span><b>Import backup</b><small>Restore JSON backup</small></span></button></div><input ref={inputRef} type="file" accept="application/json,.json" hidden onChange={importBackup}/>{message&&<div className="backup-message">{message}</div>}</section>
+ const importBackup=async(event:ChangeEvent<HTMLInputElement>)=>{const file=event.target.files?.[0];event.target.value='';if(!file||importing)return;try{setImporting(true);const parsed=JSON.parse(await file.text()) as unknown;if(!isValidBackup(parsed)){setMessage('This is not a valid Spenza backup file.');return}if(!window.confirm(`Import this Spenza backup?\n\n${parsed.data.wallets.length} wallets\n${parsed.data.transactions.length} transactions\n\nThis will replace the data currently stored on this device.`))return;const imported=prepareImportedDataForSync(parsed.data);await saveData(imported);onImported?.(imported);window.dispatchEvent(new CustomEvent('spenza:data-imported',{detail:{pending:imported.sync.pendingChanges.length}}));setMessage(`Backup imported. ${imported.sync.pendingChanges.length} cloud change${imported.sync.pendingChanges.length===1?'':'s'} queued for background sync.`)}catch(error){console.error('Backup import failed',error);setMessage('Could not import this backup. Your current screen and data were left available.')}finally{setImporting(false)}}
+ return <section className="backup-settings"><div><h2>Backup & restore</h2><p>Export your local Spenza data or restore a backup on this device.</p></div><div className="backup-settings-actions"><button onClick={exportBackup} disabled={importing}><Download size={17}/><span><b>Export backup</b><small>Download JSON backup</small></span></button><button onClick={()=>inputRef.current?.click()} disabled={importing}><Upload size={17}/><span><b>{importing?'Importing…':'Import backup'}</b><small>{importing?'Saving safely':'Restore JSON backup'}</small></span></button></div><input ref={inputRef} type="file" accept="application/json,.json" hidden onChange={importBackup}/>{message&&<div className="backup-message">{message}</div>}</section>
 }
