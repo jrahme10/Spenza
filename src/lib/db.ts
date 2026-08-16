@@ -1,3 +1,5 @@
+import { DataStore, IndexedDbDataStore, StoredEnvelope } from './storage'
+
 export type Currency = 'USD' | 'LBP'
 export type TransactionType = 'expense' | 'income' | 'transfer'
 export type BillRecurrence = 'once' | 'monthly' | 'yearly'
@@ -8,6 +10,8 @@ export type Wallet = {
   name: string
   currency: Currency
   openingBalance: number
+  createdAt?: string
+  updatedAt?: string
 }
 
 export type Transaction = {
@@ -61,10 +65,7 @@ export type SpenzaData = {
   notificationDismissedIds: string[]
 }
 
-const DB_NAME = 'spenza-db'
-const STORE = 'app-data'
-const KEY = 'spenza'
-
+export const DATA_SCHEMA_VERSION = 2
 export const defaultCategories = ['Food', 'Transport', 'Shopping', 'Bills', 'Coffee', 'Entertainment', 'Health', 'Education', 'Travel', 'Salary', 'Other']
 export const DEFAULT_USD_TO_LBP_RATE = 89500
 
@@ -79,55 +80,79 @@ export const defaultData: SpenzaData = {
   notificationDismissedIds: [],
 }
 
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1)
-    req.onupgradeneeded = () => {
-      const db = req.result
-      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE)
-    }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
+export const localDataStore: DataStore<SpenzaData> = new IndexedDbDataStore<SpenzaData>()
+
+function isStoredEnvelope(value: unknown): value is StoredEnvelope<SpenzaData> {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Partial<StoredEnvelope<SpenzaData>>
+  return typeof candidate.schemaVersion === 'number' && !!candidate.data && typeof candidate.data === 'object'
+}
+
+function dateFallback(date?: string) {
+  if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) return `${date}T12:00:00.000Z`
+  return new Date().toISOString()
+}
+
+function normalizeData(stored?: Partial<SpenzaData>): SpenzaData {
+  const now = new Date().toISOString()
+  const wallets = (stored?.wallets ?? []).map(wallet => {
+    const createdAt = wallet.createdAt || wallet.updatedAt || now
+    return { ...wallet, createdAt, updatedAt: wallet.updatedAt || createdAt }
   })
+  const transactions = (stored?.transactions ?? []).map(transaction => {
+    const createdAt = transaction.createdAt || transaction.updatedAt || dateFallback(transaction.date)
+    return { ...transaction, createdAt, updatedAt: transaction.updatedAt || createdAt }
+  })
+  const bills = (stored?.bills ?? []).map(bill => {
+    const createdAt = bill.createdAt || bill.updatedAt || dateFallback(bill.dueDate)
+    return { ...bill, createdAt, updatedAt: bill.updatedAt || createdAt }
+  })
+
+  return {
+    wallets,
+    categories: stored?.categories ?? defaultCategories,
+    transactions,
+    bills,
+    usdToLbpRate: stored?.usdToLbpRate ?? DEFAULT_USD_TO_LBP_RATE,
+    security: {
+      enabled: stored?.security?.enabled ?? false,
+      pinHash: stored?.security?.pinHash,
+      salt: stored?.security?.salt,
+      timeoutMinutes: stored?.security?.timeoutMinutes ?? 0,
+      biometricEnabled: stored?.security?.biometricEnabled ?? false,
+      biometricCredentialId: stored?.security?.biometricCredentialId,
+    },
+    notificationReadIds: stored?.notificationReadIds ?? [],
+    notificationDismissedIds: stored?.notificationDismissedIds ?? [],
+  }
+}
+
+function envelope(data: SpenzaData): StoredEnvelope<SpenzaData> {
+  return {
+    schemaVersion: DATA_SCHEMA_VERSION,
+    savedAt: new Date().toISOString(),
+    data: normalizeData(data),
+  }
 }
 
 export async function loadData(): Promise<SpenzaData> {
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readonly')
-    const req = tx.objectStore(STORE).get(KEY)
-    req.onsuccess = () => {
-      const stored = req.result as Partial<SpenzaData> | undefined
-      resolve({
-        wallets: stored?.wallets ?? [],
-        categories: stored?.categories ?? defaultCategories,
-        transactions: stored?.transactions ?? [],
-        bills: stored?.bills ?? [],
-        usdToLbpRate: stored?.usdToLbpRate ?? DEFAULT_USD_TO_LBP_RATE,
-        security: {
-          enabled: stored?.security?.enabled ?? false,
-          pinHash: stored?.security?.pinHash,
-          salt: stored?.security?.salt,
-          timeoutMinutes: stored?.security?.timeoutMinutes ?? 0,
-          biometricEnabled: stored?.security?.biometricEnabled ?? false,
-          biometricCredentialId: stored?.security?.biometricCredentialId,
-        },
-        notificationReadIds: stored?.notificationReadIds ?? [],
-        notificationDismissedIds: stored?.notificationDismissedIds ?? [],
-      })
-    }
-    req.onerror = () => reject(req.error)
-  })
+  const stored = await localDataStore.load()
+  if (!stored) return normalizeData(defaultData)
+
+  if (isStoredEnvelope(stored)) {
+    const data = normalizeData(stored.data)
+    if (stored.schemaVersion !== DATA_SCHEMA_VERSION) await localDataStore.save(envelope(data))
+    return data
+  }
+
+  // Legacy v1 data was stored directly at the IndexedDB key. Migrate it in place.
+  const data = normalizeData(stored as Partial<SpenzaData>)
+  await localDataStore.save(envelope(data))
+  return data
 }
 
 export async function saveData(data: SpenzaData): Promise<void> {
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite')
-    tx.objectStore(STORE).put(data, KEY)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
+  await localDataStore.save(envelope(data))
 }
 
 export function uid() {
