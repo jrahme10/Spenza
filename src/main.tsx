@@ -26,7 +26,13 @@ function financialFingerprint(data:Awaited<ReturnType<typeof loadData>>){return 
 function installPendingSync(){
   let retryTimer:number|undefined
   let lastAttemptAt=0
+  let automaticSyncBlocked=false
+  syncManager.subscribe(state=>{
+    if(state.status==='error'||state.status==='cancelled')automaticSyncBlocked=true
+    else if(state.status==='synced')automaticSyncBlocked=false
+  })
   const syncPending=async()=>{
+    if(automaticSyncBlocked)return
     const now=Date.now()
     if(now-lastAttemptAt<3000)return
     const before=await loadData()
@@ -34,9 +40,11 @@ function installPendingSync(){
     lastAttemptAt=now
     const beforeFingerprint=financialFingerprint(before)
     const result=await syncManager.run()
+    if(result.status==='error'||result.status==='cancelled'){automaticSyncBlocked=true;return}
     if(result.status==='synced'&&result.data&&beforeFingerprint!==financialFingerprint(result.data))window.location.reload()
   }
   const scheduleSync=(delay=600)=>{
+    if(automaticSyncBlocked)return
     if(retryTimer)window.clearTimeout(retryTimer)
     retryTimer=window.setTimeout(()=>{void syncPending()},delay)
   }
@@ -50,7 +58,6 @@ function installPendingSync(){
   window.addEventListener('pageshow',onPageShow)
   window.addEventListener('resume',onResume)
   document.addEventListener('visibilitychange',onVisibility)
-  window.setInterval(()=>{if(document.visibilityState==='visible')void syncPending()},15000)
   scheduleSync(800)
 }
 
