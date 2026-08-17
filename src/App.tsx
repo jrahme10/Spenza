@@ -149,7 +149,9 @@ export default function App(){
  const homeTransferOut=homePeriodTx.filter(t=>t.type==='transfer'&&t.walletId===homeWallet?.id).reduce((s,t)=>s+t.amount,0)
  const homeTransferIn=homePeriodTx.filter(t=>t.type==='transfer'&&t.toWalletId===homeWallet?.id).reduce((s,t)=>s+(t.exchangeRate?t.amount*t.exchangeRate:t.amount),0)
  const homeNet=homeIncome-homeExpense-homeTransferOut+homeTransferIn
- const homeAvailable=homeIncome-homeExpense
+ const homeAvailableIncome=homeWallet?data.transactions.filter(t=>t.type==='income'&&t.walletId===homeWallet.id).reduce((s,t)=>s+t.amount,0):0
+ const homeAvailableExpense=homeWallet?data.transactions.filter(t=>t.type==='expense'&&t.walletId===homeWallet.id).reduce((s,t)=>s+t.amount,0):0
+ const homeAvailable=homeAvailableIncome-homeAvailableExpense
  const categoryTotals=data.categories.map(c=>({name:c,value:homePeriodTx.filter(t=>t.type==='expense'&&t.walletId===homeWallet?.id&&t.category===c).reduce((s,t)=>s+t.amount,0)})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value)
  const categoryTotal=categoryTotals.reduce((s,x)=>s+x.value,0)
  let running=0
@@ -170,7 +172,7 @@ export default function App(){
    <div className="filters refFilters periodFilters homePeriodFilters">{(['daily','monthly','yearly'] as InsightPeriod[]).map(p=><button key={p} className={homePeriod===p?'selected':''} onClick={()=>setHomePeriod(p)}>{p}</button>)}<button className={`calendarFilterButton ${homePeriod==='custom'?'selected':''}`} onClick={()=>setHomeCalendarOpen(true)}><CalendarClock size={12}/>Calendar</button></div>
    {data.wallets.length&&<div className="insightSelectors homeAccountSelector"><label>Account<select value={homeWallet?.id||''} onChange={e=>setHomeWalletId(e.target.value)}>{data.wallets.map(w=><option key={w.id} value={w.id}>{w.name} ({w.currency})</option>)}</select></label></div>}
    <section className="monthCard"><button onClick={()=>shiftHomePeriod(-1)} aria-label="Previous period"><ChevronLeft/></button><div><b>{homePeriodLabel}</b><span>{homeWallet?`${homeWallet.name} · ${homePeriod==='custom'?'calendar':homePeriod} net`:`${homePeriod} overview`}</span><strong>{homeWallet?money(homeNet,homeWallet.currency):'—'}</strong></div><button onClick={()=>shiftHomePeriod(1)} aria-label="Next period"><ChevronRight/></button></section>
-   <div className="accountSummary homeAvailableAmount"><span>Available Amount · Income − Expenses</span><strong>{homeWallet?money(homeAvailable,homeWallet.currency):'—'}</strong></div>
+   <div className="accountSummary homeAvailableAmount"><span>Available Amount</span><strong>{homeWallet?money(homeAvailable,homeWallet.currency):'—'}</strong></div>
    <div className="refSectionHead"><h2>Accounts</h2><button onClick={()=>setTab('Wallets')}>See All</button></div>
    {data.wallets.length?<div className="accountRail">{data.wallets.slice(0,4).map((w,i)=><button className={`accountTile accountTone${i%4}${homeWallet?.id===w.id?' selectedAccount':''}`} key={w.id} onClick={()=>setHomeWalletId(w.id)}><div><b>{w.name}</b><span>{w.currency}</span></div><strong>{money(walletBalance(w.id),w.currency)}</strong></button>)}</div>:<button className="emptyWalletCta" onClick={addWallet}><WalletCards/><span><b>Create your first wallet</b><small>Add cash, bank, or card balances before recording expenses.</small></span></button>}
    <div className="refSectionHead"><h2>{homePeriodLabel} Overview</h2><button onClick={()=>{if(homeWallet)setInsightWalletId(homeWallet.id);setInsightPeriod(homePeriod==='custom'?'daily':homePeriod);setInsightDate(homeDate);setTab('Insights')}}>See All</button></div>
