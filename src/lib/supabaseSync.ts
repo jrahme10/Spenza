@@ -9,13 +9,31 @@ import { SupabaseSyncProvider } from './supabaseSyncProvider'
 export type RestoreCounts={wallets:number;transactions:number;bills:number}
 export type SyncPhase='checking'|'uploading'|'downloading'|'saving'|'complete'|'cancelled'
 export type SyncProgress={phase:SyncPhase;processed?:number;total?:number;remaining?:number;message:string}
-export type SupabaseSyncResult={status:'disabled'|'signed-out'|'synced'|'error'|'cancelled';data?:SpenzaData;error?:string;rejected?:number;restored?:RestoreCounts}
+export type SyncErrorKind='network'|'auth'|'conflict'|'data'|'server'|'unknown'
+export type SupabaseSyncResult={status:'disabled'|'signed-out'|'synced'|'error'|'cancelled';data?:SpenzaData;error?:string;errorKind?:SyncErrorKind;retryable?:boolean;rejected?:number;restored?:RestoreCounts}
 export type SyncOptions={onProgress?:(progress:SyncProgress)=>void;signal?:AbortSignal}
 const syncKey=(entityType:SyncEntityType,entityId:string)=>`${entityType}:${entityId}`
 const epoch='1970-01-01T00:00:00.000Z'
 const hasFinancialData=(data:SpenzaData)=>data.wallets.length>0||data.transactions.length>0||data.bills.length>0
 const throwIfCancelled=(signal?:AbortSignal)=>{if(signal?.aborted)throw new DOMException('Sync cancelled','AbortError')}
 const isAbortError=(error:unknown)=>error instanceof DOMException&&error.name==='AbortError'
+
+type ErrorShape={message?:unknown;code?:unknown;status?:unknown;statusCode?:unknown;name?:unknown}
+function classifySyncError(error:unknown):{kind:SyncErrorKind;message:string;retryable:boolean}{
+  const value=(error&&typeof error==='object'?error:{}) as ErrorShape
+  const raw=error instanceof Error?error.message:typeof value.message==='string'?value.message:String(error)
+  const message=raw||'Cloud sync failed.'
+  const lower=message.toLowerCase()
+  const code=String(value.code??'').toLowerCase()
+  const status=Number(value.status??value.statusCode??0)
+  if(typeof navigator!=='undefined'&&!navigator.onLine)return {kind:'network',message:'You appear to be offline. Your local changes are safe. Try Sync now when your connection is back.',retryable:true}
+  if(status===401||code.includes('jwt')||lower.includes('jwt expired')||lower.includes('invalid jwt')||lower.includes('refresh token')||lower.includes('session expired'))return {kind:'auth',message:'Your cloud session is no longer valid. Sign in again to continue syncing.',retryable:false}
+  if(status===408||status===429||status>=500||lower.includes('timeout')||lower.includes('timed out'))return {kind:status>=500?'server':'network',message:status===429?'Cloud sync is temporarily busy. Your local changes are safe; try again shortly.':'Cloud sync is temporarily unavailable. Your local changes are safe; try again.',retryable:true}
+  if(value.name==='TypeError'||lower.includes('failed to fetch')||lower.includes('networkerror')||lower.includes('network request')||lower.includes('load failed'))return {kind:'network',message:'Could not reach the cloud service. Your local changes are safe. Check your connection and try Sync now again.',retryable:true}
+  if(lower.includes('pagination cursor')||lower.includes('missing payload')||lower.includes('could not be loaded for resolution'))return {kind:'data',message, retryable:false}
+  if(status===403)return {kind:'server',message:'Cloud access was rejected. Your local data is unchanged. Please try again after checking your cloud account.',retryable:false}
+  return {kind:'unknown',message,retryable:true}
+}
 
 function removePending(data:SpenzaData,entityType:SyncEntityType,entityId:string){const key=syncKey(entityType,entityId);return {...data,sync:{...data.sync,pendingChanges:data.sync.pendingChanges.filter(change=>syncKey(change.entityType,change.entityId)!==key)}}}
 function removeTombstone(data:SpenzaData,entityType:SyncEntityType,entityId:string){return {...data,sync:{...data.sync,tombstones:data.sync.tombstones.filter(t=>!(t.entityType===entityType&&t.entityId===entityId))}}}
@@ -25,6 +43,7 @@ function remoteVersion(record:RemoteSyncRecord){return record.operation==='delet
 function applyRemote(data:SpenzaData,raw:RemoteSyncRecord):SpenzaData{const record=deserializeRemoteRecord(raw);if(resolveConflict(localVersion(data,record),remoteVersion(record))!=='remote')return data;data=removePending(data,record.entityType,record.entityId);if(record.operation==='delete'){if(record.entityType==='wallet')data={...data,wallets:data.wallets.filter(w=>w.id!==record.entityId),transactions:data.transactions.filter(t=>t.walletId!==record.entityId&&t.toWalletId!==record.entityId),bills:data.bills.filter(b=>b.walletId!==record.entityId)};else if(record.entityType==='transaction')data={...data,transactions:data.transactions.filter(t=>t.id!==record.entityId)};else data={...data,bills:data.bills.filter(b=>b.id!==record.entityId)};return addTombstone(data,record.entityType,record.entityId,record.changedAt)}data=removeTombstone(data,record.entityType,record.entityId);const payload=record.payload as RemotePayload;if(record.entityType==='wallet'){const wallet=payload as Wallet;const next:Wallet={...wallet,id:record.entityId,updatedAt:record.changedAt,createdAt:wallet.createdAt||record.changedAt};return {...data,wallets:data.wallets.some(w=>w.id===record.entityId)?data.wallets.map(w=>w.id===record.entityId?next:w):[...data.wallets,next]}}if(record.entityType==='transaction'){const transaction=payload as Transaction;const next:Transaction={...transaction,id:record.entityId,updatedAt:record.changedAt,createdAt:transaction.createdAt||record.changedAt};return {...data,transactions:data.transactions.some(t=>t.id===record.entityId)?data.transactions.map(t=>t.id===record.entityId?next:t):[next,...data.transactions]}}const bill=payload as Bill;const next:Bill={...bill,id:record.entityId,updatedAt:record.changedAt,createdAt:bill.createdAt||record.changedAt};return {...data,bills:data.bills.some(b=>b.id===record.entityId)?data.bills.map(b=>b.id===record.entityId?next:b):[...data.bills,next]}}
 function bootstrapRecords(data:SpenzaData):RemoteSyncRecord<RemotePayload>[]{const fallback=new Date().toISOString();return [...data.wallets.map(wallet=>({entityType:'wallet' as const,entityId:wallet.id,operation:'upsert' as const,changedAt:wallet.updatedAt||wallet.createdAt||fallback,payload:wallet})),...data.transactions.map(transaction=>({entityType:'transaction' as const,entityId:transaction.id,operation:'upsert' as const,changedAt:transaction.updatedAt||transaction.createdAt||fallback,payload:transaction})),...data.bills.map(bill=>({entityType:'bill' as const,entityId:bill.id,operation:'upsert' as const,changedAt:bill.updatedAt||bill.createdAt||fallback,payload:bill}))]}
 function rejectionError(label:string,rejected:Array<{reason:string}>){const reasons=[...new Set(rejected.map(r=>r.reason).filter(Boolean))];return `${label} failed: ${rejected.length} change${rejected.length===1?' was':'s were'} rejected${reasons.length?`. ${reasons.slice(0,2).join(' | ')}`:''}`}
+function conflictResult(data:SpenzaData,label:string,rejected:Array<{reason:string}>):SupabaseSyncResult{return {status:'error',data,error:rejectionError(label,rejected),errorKind:'conflict',retryable:false,rejected:rejected.length}}
 function ensureCursorAdvanced(current:string|undefined,next:string|undefined,seen:Set<string>){if(!next)throw new Error('Cloud pagination stopped without a continuation cursor.');if(next===current||seen.has(next))throw new Error('Cloud pagination cursor did not advance safely.');seen.add(next);return next}
 
 async function reconcileRejected(provider:SupabaseSyncProvider,data:SpenzaData,rejected:Array<{change:RemoteSyncRecord;reason:string}>,progress?:SyncOptions['onProgress'],signal?:AbortSignal){
@@ -75,7 +94,7 @@ export async function syncSupabaseIfAuthenticated(options:SyncOptions={}):Promis
     const provider=new SupabaseSyncProvider(supabase,userId);let data=await localRepository.getSnapshot();throwIfCancelled(signal)
     if(!hasFinancialData(data)){const restored=await restoreFullCloudSnapshot(provider,data,progress,signal);throwIfCancelled(signal);progress?.({phase:'complete',processed:restored.counts.wallets+restored.counts.transactions+restored.counts.bills,total:restored.counts.wallets+restored.counts.transactions+restored.counts.bills,remaining:0,message:'Cloud restore complete.'});return {status:'synced',data:restored.data,rejected:0,restored:restored.counts}}
     const remoteProbe=await provider.pullChanges({since:epoch,limit:1},signal);throwIfCancelled(signal)
-    if(remoteProbe.changes.length===0){const bootstrap=bootstrapRecords(data);if(bootstrap.length){progress?.({phase:'uploading',processed:0,total:bootstrap.length,remaining:bootstrap.length,message:`Uploading ${bootstrap.length} local item${bootstrap.length===1?'':'s'}…`});const pushed=await provider.pushChanges(bootstrap,(processed,total)=>progress?.({phase:'uploading',processed,total,remaining:Math.max(0,total-processed),message:`Uploading ${processed} of ${total} · ${Math.max(0,total-processed)} remaining`}),signal);throwIfCancelled(signal);if(pushed.rejected.length){const reconciled=await reconcileRejected(provider,data,pushed.rejected,progress,signal);data=reconciled.data;if(reconciled.unresolved.length)return {status:'error',data,error:rejectionError('Initial cloud backup',reconciled.unresolved),rejected:reconciled.unresolved.length}}}}
+    if(remoteProbe.changes.length===0){const bootstrap=bootstrapRecords(data);if(bootstrap.length){progress?.({phase:'uploading',processed:0,total:bootstrap.length,remaining:bootstrap.length,message:`Uploading ${bootstrap.length} local item${bootstrap.length===1?'':'s'}…`});const pushed=await provider.pushChanges(bootstrap,(processed,total)=>progress?.({phase:'uploading',processed,total,remaining:Math.max(0,total-processed),message:`Uploading ${processed} of ${total} · ${Math.max(0,total-processed)} remaining`}),signal);throwIfCancelled(signal);if(pushed.rejected.length){const reconciled=await reconcileRejected(provider,data,pushed.rejected,progress,signal);data=reconciled.data;if(reconciled.unresolved.length)return conflictResult(data,'Initial cloud backup',reconciled.unresolved)}}}
     const pending=serializePendingChanges(data)
     if(pending.length){
       const pullSince=data.sync.lastSyncAt
@@ -84,10 +103,15 @@ export async function syncSupabaseIfAuthenticated(options:SyncOptions={}):Promis
       throwIfCancelled(signal)
       data=acknowledgeChanges(data,pushed.accepted,pushed.serverTime)
       data={...data,sync:{...data.sync,lastSyncAt:pullSince}}
-      if(pushed.rejected.length){const reconciled=await reconcileRejected(provider,data,pushed.rejected,progress,signal);data=reconciled.data;if(reconciled.unresolved.length)return {status:'error',data,error:rejectionError('Cloud sync',reconciled.unresolved),rejected:reconciled.unresolved.length}}
+      if(pushed.rejected.length){const reconciled=await reconcileRejected(provider,data,pushed.rejected,progress,signal);data=reconciled.data;if(reconciled.unresolved.length)return conflictResult(data,'Cloud sync',reconciled.unresolved)}
     }
     let cursor:string|undefined;let serverTime=data.sync.lastSyncAt||epoch;let downloaded=0;const seenCursors=new Set<string>();progress?.({phase:'downloading',processed:0,message:'Checking for cloud updates…'})
     while(true){throwIfCancelled(signal);const pulled=await provider.pullChanges({since:data.sync.lastSyncAt,limit:500,cursor},signal);throwIfCancelled(signal);downloaded+=pulled.changes.length;for(const change of pulled.changes){throwIfCancelled(signal);data=applyRemote(data,change)}serverTime=pulled.serverTime;progress?.({phase:'downloading',processed:downloaded,message:downloaded?`Downloaded ${downloaded} cloud update${downloaded===1?'':'s'}…`:'No newer cloud changes.'});if(!pulled.hasMore)break;cursor=ensureCursorAdvanced(cursor,pulled.cursor,seenCursors)}
     throwIfCancelled(signal);data={...data,sync:{...data.sync,lastSyncAt:serverTime}};progress?.({phase:'saving',message:'Saving synchronized data…'});await localRepository.replaceSnapshot(data);throwIfCancelled(signal);progress?.({phase:'complete',processed:pending.length,total:pending.length,remaining:0,message:'Everything is up to date.'});return {status:'synced',data,rejected:0}
-  }catch(error){if(isAbortError(error)||signal?.aborted){progress?.({phase:'cancelled',message:'Sync cancelled.'});return {status:'cancelled'}}return {status:'error',error:error instanceof Error?error.message:String(error)}}
+  }catch(error){
+    if(isAbortError(error)||signal?.aborted){progress?.({phase:'cancelled',message:'Sync cancelled.'});return {status:'cancelled'}}
+    const classified=classifySyncError(error)
+    if(classified.kind==='auth')return {status:'signed-out',error:classified.message,errorKind:'auth',retryable:false}
+    return {status:'error',error:classified.message,errorKind:classified.kind,retryable:classified.retryable}
+  }
 }
