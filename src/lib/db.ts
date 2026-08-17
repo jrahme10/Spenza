@@ -156,10 +156,13 @@ function normalizeData(stored?: Partial<SpenzaData>): SpenzaData {
     const createdAt = bill.createdAt || bill.updatedAt || dateFallback(bill.dueDate)
     return { ...bill, createdAt, updatedAt: bill.updatedAt || createdAt }
   })
+  const savedCategories = stored?.categories ?? defaultCategories
+  const usedTransactionCategories = transactions.map(transaction => transaction.category?.trim()).filter((category): category is string => !!category)
+  const categories = [...new Map([...savedCategories,...usedTransactionCategories].map(category => [category.toLowerCase(),category])).values()]
 
   return {
     wallets,
-    categories: stored?.categories ?? defaultCategories,
+    categories,
     transactions,
     bills,
     usdToLbpRate: stored?.usdToLbpRate ?? DEFAULT_USD_TO_LBP_RATE,
