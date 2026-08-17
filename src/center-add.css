@@ -1,4 +1,4 @@
-/* Compact bottom navigation with even spacing and a slightly raised + action. */
+/* Compact bottom navigation with a true centered + action. */
 .reference-layout nav{
  position:fixed!important;
  display:grid!important;
@@ -6,21 +6,22 @@
  align-items:center!important;
  justify-items:stretch!important;
  column-gap:0!important;
- min-height:58px!important;
- height:auto!important;
- padding:5px 6px calc(5px + env(safe-area-inset-bottom,0px))!important;
+ min-height:56px!important;
+ height:56px!important;
+ padding:3px 4px!important;
  box-sizing:border-box!important;
 }
 .reference-layout nav button{
  width:100%!important;
  max-width:none!important;
  min-width:0!important;
- min-height:44px!important;
- padding:4px 2px!important;
+ min-height:42px!important;
+ padding:2px 1px!important;
  justify-self:stretch!important;
  display:flex!important;
  align-items:center!important;
  justify-content:center!important;
+ gap:2px!important;
 }
 .reference-layout nav button:nth-child(1){grid-column:1!important}
 .reference-layout nav button:nth-child(2){grid-column:2!important}
@@ -28,18 +29,24 @@
  grid-column:4!important;
  position:relative!important;
  left:auto!important;
- transform:translateY(-10px)!important;
+ justify-self:center!important;
+ transform:translateY(-6px)!important;
  z-index:3!important;
- min-height:44px!important;
+ min-height:42px!important;
 }
 .reference-layout nav button:nth-child(4){grid-column:5!important}
 .reference-layout nav button:nth-child(5){grid-column:6!important}
 .reference-layout nav button:nth-child(6){grid-column:7!important}
-.reference-layout nav .addNav svg{margin-top:-18px!important}
+.reference-layout nav .addNav svg{
+ width:44px!important;
+ height:44px!important;
+ margin-top:0!important;
+}
 .reference-layout nav .addNav span{display:none!important}
-.reference-layout nav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.reference-layout nav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:360px){
- .reference-layout nav{grid-template-columns:repeat(7,minmax(0,1fr))!important;min-height:56px!important}
- .reference-layout nav button{font-size:7px!important}
+ .reference-layout nav{grid-template-columns:repeat(7,minmax(0,1fr))!important;min-height:54px!important;height:54px!important}
+ .reference-layout nav button{font-size:7px!important;min-height:40px!important}
+ .reference-layout nav .addNav{transform:translateY(-5px)!important}
  .reference-layout nav .addNav svg{width:42px!important;height:42px!important}
 }
