@@ -23,27 +23,35 @@ import { syncManager } from './lib/syncManager'
 
 function financialFingerprint(data:Awaited<ReturnType<typeof loadData>>){return JSON.stringify({wallets:data.wallets,transactions:data.transactions,bills:data.bills})}
 
-function installReconnectSync(){
+function installPendingSync(){
   let retryTimer:number|undefined
   let lastAttemptAt=0
-  const syncPending=async(force=false)=>{
-    const now=Date.now();if(!force&&now-lastAttemptAt<3000)return
-    const before=await loadData();const hasPending=before.sync.pendingChanges.length>0;if(!force&&!hasPending)return
-    lastAttemptAt=now;const beforeFingerprint=financialFingerprint(before);const result=await syncManager.run()
+  const syncPending=async()=>{
+    const now=Date.now()
+    if(now-lastAttemptAt<3000)return
+    const before=await loadData()
+    if(before.sync.pendingChanges.length===0)return
+    lastAttemptAt=now
+    const beforeFingerprint=financialFingerprint(before)
+    const result=await syncManager.run()
     if(result.status==='synced'&&result.data&&beforeFingerprint!==financialFingerprint(result.data))window.location.reload()
   }
-  const scheduleSync=(force=false,delay=600)=>{if(retryTimer)window.clearTimeout(retryTimer);retryTimer=window.setTimeout(()=>{void syncPending(force)},delay)}
-  const onOnline=()=>scheduleSync(true,500)
-  const onFocus=()=>scheduleSync(true,250)
-  const onPageShow=()=>scheduleSync(true,250)
-  const onVisibility=()=>{if(document.visibilityState==='visible')scheduleSync(true,250)}
-  const onResume=()=>scheduleSync(true,250)
+  const scheduleSync=(delay=600)=>{
+    if(retryTimer)window.clearTimeout(retryTimer)
+    retryTimer=window.setTimeout(()=>{void syncPending()},delay)
+  }
+  const onOnline=()=>scheduleSync(500)
+  const onFocus=()=>scheduleSync(250)
+  const onPageShow=()=>scheduleSync(250)
+  const onVisibility=()=>{if(document.visibilityState==='visible')scheduleSync(250)}
+  const onResume=()=>scheduleSync(250)
   window.addEventListener('online',onOnline)
   window.addEventListener('focus',onFocus)
   window.addEventListener('pageshow',onPageShow)
   window.addEventListener('resume',onResume)
   document.addEventListener('visibilitychange',onVisibility)
-  window.setInterval(()=>{if(document.visibilityState==='visible')void syncPending(false)},15000)
+  window.setInterval(()=>{if(document.visibilityState==='visible')void syncPending()},15000)
+  scheduleSync(800)
 }
 
 function bootstrap(){
@@ -54,19 +62,9 @@ function bootstrap(){
       <SyncStatusPill/>
     </React.StrictMode>,
   )
-  installReconnectSync()
+  installPendingSync()
   initDynamicGreeting()
   registerPwa()
-  void (async()=>{
-    try{
-      const before=await loadData()
-      const beforeFingerprint=financialFingerprint(before)
-      const result=await syncManager.run()
-      if(result.status==='synced'&&result.data&&beforeFingerprint!==financialFingerprint(result.data))window.location.reload()
-    }catch{
-      // Sync state is exposed globally; local data stays available.
-    }
-  })()
 }
 
 bootstrap()
