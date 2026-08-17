@@ -4,13 +4,16 @@ import { PullRemoteChangesRequest, PullRemoteChangesResult, PushRemoteChangesRes
 type EntityTable='spenza_wallets'|'spenza_transactions'|'spenza_bills'
 type EntityRow={id:string;payload:unknown;changed_at:string}
 type TombstoneRow={entity_type:'wallet'|'transaction'|'bill';entity_id:string;deleted_at:string}
+type BatchResult={index:number;accepted:boolean;reason?:string|null}
+type BatchResponse={results?:BatchResult[];serverTime?:string}
 export type PushProgress=(processed:number,total:number,change:RemoteSyncRecord)=>void
 
-const tableFor=(entityType:RemoteSyncRecord['entityType']):EntityTable=>entityType==='wallet'?'spenza_wallets':entityType==='transaction'?'spenza_transactions':'spenza_bills'
+const BATCH_SIZE=200
 const throwIfCancelled=(signal?:AbortSignal)=>{if(signal?.aborted)throw new DOMException('Sync cancelled','AbortError')}
 
 function toRemoteEntity(entityType:RemoteSyncRecord['entityType'],row:EntityRow):RemoteSyncRecord{return {entityType,entityId:row.id,operation:'upsert',changedAt:row.changed_at,payload:row.payload}}
 function toRemoteDelete(row:TombstoneRow):RemoteSyncRecord{return {entityType:row.entity_type,entityId:row.entity_id,operation:'delete',changedAt:row.deleted_at}}
+function syncRank(change:RemoteSyncRecord){return change.operation==='upsert'?(change.entityType==='wallet'?0:change.entityType==='transaction'?1:2):(change.entityType==='wallet'?5:change.entityType==='transaction'?3:4)}
 
 export class SupabaseSyncProvider implements RemoteSyncProvider{
   constructor(private supabase:SupabaseClient,private userId:string){}
@@ -27,9 +30,33 @@ export class SupabaseSyncProvider implements RemoteSyncProvider{
   }
   async pushChanges(changes:RemoteSyncRecord[],onProgress?:PushProgress,signal?:AbortSignal):Promise<PushRemoteChangesResult>{
     const accepted:RemoteSyncRecord[]=[];const rejected:Array<{change:RemoteSyncRecord;reason:string}>=[]
-    const ordered=[...changes].sort((a,b)=>{const rank=(x:RemoteSyncRecord)=>x.operation==='upsert'?(x.entityType==='wallet'?0:x.entityType==='transaction'?1:2):(x.entityType==='wallet'?5:x.entityType==='transaction'?3:4);return rank(a)-rank(b)||a.changedAt.localeCompare(b.changedAt)})
+    const ordered=[...changes].sort((a,b)=>syncRank(a)-syncRank(b)||a.changedAt.localeCompare(b.changedAt))
     let processed=0
-    for(const change of ordered){throwIfCancelled(signal);const {data,error}=await this.supabase.rpc('spenza_apply_change',{p_entity_type:change.entityType,p_entity_id:change.entityId,p_operation:change.operation,p_changed_at:change.changedAt,p_payload:change.operation==='upsert'?(change.payload??{}):null});throwIfCancelled(signal);if(error)rejected.push({change,reason:error.message});else if(data===true)accepted.push(change);else rejected.push({change,reason:'A newer remote version already exists'});processed+=1;onProgress?.(processed,ordered.length,change)}
-    return {accepted,rejected,serverTime:await this.serverTime(signal)}
+    let latestServerTime:string|undefined
+
+    for(let start=0;start<ordered.length;start+=BATCH_SIZE){
+      throwIfCancelled(signal)
+      const batch=ordered.slice(start,start+BATCH_SIZE)
+      const payload=batch.map(change=>({entityType:change.entityType,entityId:change.entityId,operation:change.operation,changedAt:change.changedAt,payload:change.operation==='upsert'?(change.payload??{}):null}))
+      const {data,error}=await this.supabase.rpc('spenza_apply_changes_batch',{p_changes:payload})
+      throwIfCancelled(signal)
+      if(error)throw error
+
+      const response=(data||{}) as BatchResponse
+      latestServerTime=response.serverTime||latestServerTime
+      const results=Array.isArray(response.results)?response.results:[]
+      const byIndex=new Map(results.map(result=>[result.index,result]))
+
+      for(let index=0;index<batch.length;index++){
+        const change=batch[index]
+        const result=byIndex.get(index)
+        if(result?.accepted)accepted.push(change)
+        else rejected.push({change,reason:result?.reason||'Cloud batch did not return a result for this change'})
+        processed+=1
+        onProgress?.(processed,ordered.length,change)
+      }
+    }
+
+    return {accepted,rejected,serverTime:latestServerTime||await this.serverTime(signal)}
   }
 }
