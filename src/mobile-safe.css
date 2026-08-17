@@ -25,14 +25,15 @@ body{margin:0;padding:0;overflow-x:hidden;}
   padding-top:max(18px,var(--safe-top))!important;
   padding-left:max(16px,var(--safe-left))!important;
   padding-right:max(16px,var(--safe-right))!important;
-  padding-bottom:calc(108px + var(--safe-bottom))!important;
+  padding-bottom:calc(84px + var(--safe-bottom))!important;
 }
 
-/* Bottom navigation lives above the home indicator while its background extends
-   to the physical screen edge. */
+/* Keep the usable navigation row compact while still extending the background
+   behind the iPhone home indicator. */
 .reference-layout nav{
-  min-height:calc(74px + var(--safe-bottom))!important;
-  height:calc(74px + var(--safe-bottom))!important;
+  min-height:calc(56px + var(--safe-bottom))!important;
+  height:calc(56px + var(--safe-bottom))!important;
+  padding-top:3px!important;
   padding-bottom:var(--safe-bottom)!important;
   padding-left:max(4px,var(--safe-left))!important;
   padding-right:max(4px,var(--safe-right))!important;
@@ -55,7 +56,7 @@ body{margin:0;padding:0;overflow-x:hidden;}
 
 /* Fixed/raised Add action remains inside the safe navigation region. */
 .reference-layout nav .addNav{
-  margin-bottom:calc(var(--safe-bottom) * .15)!important;
+  margin-bottom:0!important;
 }
 
 @media (display-mode:standalone){
