@@ -27,19 +27,29 @@ function decodeCursor(value?:string):PullCursor|undefined{if(!value)return undef
 
 export class SupabaseSyncProvider implements RemoteSyncProvider{
   constructor(private supabase:SupabaseClient,private userId:string){}
-  private async serverTime(signal?:AbortSignal){throwIfCancelled(signal);const {data,error}=await this.supabase.rpc('spenza_server_time');throwIfCancelled(signal);if(error)throw error;return typeof data==='string'?data:new Date().toISOString()}
+  private async serverTime(signal?:AbortSignal){
+    throwIfCancelled(signal)
+    let query=this.supabase.rpc('spenza_server_time')
+    if(signal)query=query.abortSignal(signal)
+    const {data,error}=await query
+    throwIfCancelled(signal)
+    if(error)throw error
+    return typeof data==='string'?data:new Date().toISOString()
+  }
   async pullChanges(request:PullRemoteChangesRequest,signal?:AbortSignal):Promise<PullRemoteChangesResult>{
     throwIfCancelled(signal)
     const since=request.since||EPOCH
     const limit=Math.min(Math.max(request.limit||500,1),2000)
     const cursor=decodeCursor(request.cursor)
-    const {data,error}=await this.supabase.rpc('spenza_pull_changes',{
+    let query=this.supabase.rpc('spenza_pull_changes',{
       p_since:since,
       p_cursor_changed_at:cursor?.changedAt??null,
       p_cursor_entity_type:cursor?.entityType??null,
       p_cursor_entity_id:cursor?.entityId??null,
       p_limit:limit+1,
     })
+    if(signal)query=query.abortSignal(signal)
+    const {data,error}=await query
     throwIfCancelled(signal)
     if(error)throw error
     const rows=(data||[]) as PullRow[]
@@ -58,10 +68,10 @@ export class SupabaseSyncProvider implements RemoteSyncProvider{
       for(let start=0;start<ids.length;start+=LOOKUP_CHUNK_SIZE){
         throwIfCancelled(signal)
         const chunk=ids.slice(start,start+LOOKUP_CHUNK_SIZE)
-        const [{data:entities,error:entityError},{data:tombstones,error:tombstoneError}]=await Promise.all([
-          this.supabase.from(tableFor(entityType)).select('id,payload,changed_at').eq('owner_id',this.userId).in('id',chunk),
-          this.supabase.from('spenza_tombstones').select('entity_type,entity_id,deleted_at').eq('owner_id',this.userId).eq('entity_type',entityType).in('entity_id',chunk),
-        ])
+        let entityQuery=this.supabase.from(tableFor(entityType)).select('id,payload,changed_at').eq('owner_id',this.userId).in('id',chunk)
+        let tombstoneQuery=this.supabase.from('spenza_tombstones').select('entity_type,entity_id,deleted_at').eq('owner_id',this.userId).eq('entity_type',entityType).in('entity_id',chunk)
+        if(signal){entityQuery=entityQuery.abortSignal(signal);tombstoneQuery=tombstoneQuery.abortSignal(signal)}
+        const [{data:entities,error:entityError},{data:tombstones,error:tombstoneError}]=await Promise.all([entityQuery,tombstoneQuery])
         throwIfCancelled(signal)
         if(entityError)throw entityError
         if(tombstoneError)throw tombstoneError
@@ -80,7 +90,9 @@ export class SupabaseSyncProvider implements RemoteSyncProvider{
       throwIfCancelled(signal)
       const batch=ordered.slice(start,start+BATCH_SIZE)
       const payload=batch.map(change=>({entityType:change.entityType,entityId:change.entityId,operation:change.operation,changedAt:change.changedAt,payload:change.operation==='upsert'?(change.payload??{}):null}))
-      const {data,error}=await this.supabase.rpc('spenza_apply_changes_batch',{p_changes:payload})
+      let query=this.supabase.rpc('spenza_apply_changes_batch',{p_changes:payload})
+      if(signal)query=query.abortSignal(signal)
+      const {data,error}=await query
       throwIfCancelled(signal)
       if(error)throw error
       const response=(data||{}) as BatchResponse
