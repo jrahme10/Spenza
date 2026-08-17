@@ -5,31 +5,20 @@
   --safe-bottom:env(safe-area-inset-bottom,0px);
   --safe-left:env(safe-area-inset-left,0px);
 }
-
 html,body,#root{min-height:100%;}
 body{margin:0;padding:0;overflow-x:hidden;}
-
-/* iOS Safari auto-zooms focused form controls below 16px. Keep controls readable
-   without disabling pinch zoom or changing accessibility viewport settings. */
 @media (max-width:768px){
-  input,select,textarea,
-  .refSheet input,.refSheet select,.refSheet textarea,
-  .settingsField input,.inlineRate input,
-  .insightSelectors select,.homeAccountSelector select{
-    font-size:16px!important;
-  }
+  input,select,textarea,.refSheet input,.refSheet select,.refSheet textarea,.settingsField input,.inlineRate input,.insightSelectors select,.homeAccountSelector select{font-size:16px!important;}
 }
-
-/* Keep the app content out of notch / Dynamic Island / rounded side cutouts. */
+/* Leave a generous scrollable buffer above the fixed navigation so the final
+   controls/cards on every page can be moved fully clear of the floating + button. */
 .phone.reference-layout{
   padding-top:max(18px,var(--safe-top))!important;
   padding-left:max(16px,var(--safe-left))!important;
   padding-right:max(16px,var(--safe-right))!important;
-  padding-bottom:calc(84px + var(--safe-bottom))!important;
+  padding-bottom:calc(150px + var(--safe-bottom))!important;
+  scroll-padding-bottom:calc(150px + var(--safe-bottom));
 }
-
-/* Keep the usable navigation row compact while still extending the background
-   behind the iPhone home indicator. */
 .reference-layout nav{
   min-height:calc(56px + var(--safe-bottom))!important;
   height:calc(56px + var(--safe-bottom))!important;
@@ -39,26 +28,7 @@ body{margin:0;padding:0;overflow-x:hidden;}
   padding-right:max(4px,var(--safe-right))!important;
   box-sizing:border-box!important;
 }
-
-/* Sheets and dialogs stay clear of the home indicator and side cutouts. */
-.refSheet,.sheet{
-  padding-left:max(18px,var(--safe-left))!important;
-  padding-right:max(18px,var(--safe-right))!important;
-  padding-bottom:calc(24px + var(--safe-bottom))!important;
-}
-.overlay,.dialogOverlay{
-  padding-left:max(12px,var(--safe-left))!important;
-  padding-right:max(12px,var(--safe-right))!important;
-  padding-top:max(12px,var(--safe-top))!important;
-  padding-bottom:max(12px,var(--safe-bottom))!important;
-  box-sizing:border-box!important;
-}
-
-/* Fixed/raised Add action remains inside the safe navigation region. */
-.reference-layout nav .addNav{
-  margin-bottom:0!important;
-}
-
-@media (display-mode:standalone){
-  .phone.reference-layout{padding-top:max(18px,var(--safe-top))!important;}
-}
+.refSheet,.sheet{padding-left:max(18px,var(--safe-left))!important;padding-right:max(18px,var(--safe-right))!important;padding-bottom:calc(24px + var(--safe-bottom))!important;}
+.overlay,.dialogOverlay{padding-left:max(12px,var(--safe-left))!important;padding-right:max(12px,var(--safe-right))!important;padding-top:max(12px,var(--safe-top))!important;padding-bottom:max(12px,var(--safe-bottom))!important;box-sizing:border-box!important;}
+.reference-layout nav .addNav{margin-bottom:0!important;}
+@media (display-mode:standalone){.phone.reference-layout{padding-top:max(18px,var(--safe-top))!important;}}
