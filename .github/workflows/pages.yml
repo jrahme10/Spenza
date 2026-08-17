@@ -27,6 +27,8 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build
+        env:
+          VITE_VAPID_PUBLIC_KEY: BGZqLK7DKcn6DmUUi4UNl8geuuAXmFxwv8V6Yf3aIyQLG_Nu7PrhF94yI8g6QLpTF1JFUyeYncFAk5MnLm-dGDA
         run: npm run build -- --base=/Spenza/
       - name: Setup Pages
         uses: actions/configure-pages@v5
