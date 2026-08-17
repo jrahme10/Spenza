@@ -1,61 +1,7 @@
-/* Compact bottom navigation with five equally spaced tabs and a floating upper-right + action. */
-.reference-layout nav{
- position:fixed!important;
- display:grid!important;
- grid-template-columns:repeat(5,minmax(0,1fr))!important;
- align-items:center!important;
- justify-items:stretch!important;
- column-gap:0!important;
- min-height:56px!important;
- height:56px!important;
- padding:3px 4px!important;
- box-sizing:border-box!important;
- overflow:visible!important;
-}
-.reference-layout nav button:not(.addNav){
- width:100%!important;
- max-width:none!important;
- min-width:0!important;
- min-height:42px!important;
- padding:2px 1px!important;
- justify-self:stretch!important;
- display:flex!important;
- align-items:center!important;
- justify-content:center!important;
- gap:2px!important;
-}
-.reference-layout nav button:nth-child(1){grid-column:1!important}
-.reference-layout nav button:nth-child(2){grid-column:2!important}
-.reference-layout nav button:nth-child(4){grid-column:3!important}
-.reference-layout nav button:nth-child(5){grid-column:4!important}
-.reference-layout nav button:nth-child(6){grid-column:5!important}
-.reference-layout nav .addNav{
- position:absolute!important;
- left:auto!important;
- right:max(28px,calc(20px + env(safe-area-inset-right,0px)))!important;
- top:-76px!important;
- width:54px!important;
- height:54px!important;
- min-width:54px!important;
- min-height:54px!important;
- padding:0!important;
- margin:0!important;
- transform:none!important;
- z-index:4!important;
- display:grid!important;
- place-items:center!important;
- overflow:visible!important;
-}
-.reference-layout nav .addNav svg{
- width:50px!important;
- height:50px!important;
- margin:0!important;
-}
-.reference-layout nav .addNav span{display:none!important}
-.reference-layout nav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media(max-width:360px){
- .reference-layout nav{grid-template-columns:repeat(5,minmax(0,1fr))!important;min-height:54px!important;height:54px!important}
- .reference-layout nav button:not(.addNav){font-size:7px!important;min-height:40px!important}
- .reference-layout nav .addNav{right:max(24px,calc(18px + env(safe-area-inset-right,0px)))!important;top:-72px!important;width:50px!important;height:50px!important;min-width:50px!important;min-height:50px!important}
- .reference-layout nav .addNav svg{width:46px!important;height:46px!important}
-}
+/* Compact bottom navigation with five equally spaced tabs and a truly centered floating + action. */
+.reference-layout nav{position:fixed!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;align-items:center!important;justify-items:stretch!important;column-gap:0!important;min-height:56px!important;height:56px!important;padding:3px 4px!important;box-sizing:border-box!important;overflow:visible!important}
+.reference-layout nav button:not(.addNav){width:100%!important;max-width:none!important;min-width:0!important;min-height:42px!important;padding:2px 1px!important;justify-self:stretch!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:2px!important}
+.reference-layout nav button:nth-child(1){grid-column:1!important}.reference-layout nav button:nth-child(2){grid-column:2!important}.reference-layout nav button:nth-child(4){grid-column:3!important}.reference-layout nav button:nth-child(5){grid-column:4!important}.reference-layout nav button:nth-child(6){grid-column:5!important}
+.reference-layout nav .addNav{position:absolute!important;left:50%!important;right:auto!important;top:-76px!important;width:54px!important;height:54px!important;min-width:54px!important;min-height:54px!important;padding:0!important;margin:0!important;transform:translateX(-50%)!important;z-index:4!important;display:grid!important;place-items:center!important;overflow:visible!important}
+.reference-layout nav .addNav svg{width:50px!important;height:50px!important;margin:0!important}.reference-layout nav .addNav span{display:none!important}.reference-layout nav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:360px){.reference-layout nav{grid-template-columns:repeat(5,minmax(0,1fr))!important;min-height:54px!important;height:54px!important}.reference-layout nav button:not(.addNav){font-size:7px!important;min-height:40px!important}.reference-layout nav .addNav{left:50%!important;right:auto!important;top:-72px!important;width:50px!important;height:50px!important;min-width:50px!important;min-height:50px!important;transform:translateX(-50%)!important}.reference-layout nav .addNav svg{width:46px!important;height:46px!important}}
