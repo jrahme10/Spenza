@@ -17,9 +17,11 @@ import './center-add.css'
 import './mobile-safe.css'
 import './security-notifications.css'
 import './cloud-sync.css'
+import './note-suggestions.css'
 import { registerPwa } from './lib/pwa'
 import { loadData } from './lib/db'
 import { syncManager } from './lib/syncManager'
+import { initNoteSuggestions } from './lib/noteSuggestions'
 
 function financialFingerprint(data:Awaited<ReturnType<typeof loadData>>){return JSON.stringify({wallets:data.wallets,transactions:data.transactions,bills:data.bills})}
 
@@ -71,6 +73,7 @@ function bootstrap(){
   )
   installPendingSync()
   initDynamicGreeting()
+  initNoteSuggestions()
   registerPwa()
 }
 
