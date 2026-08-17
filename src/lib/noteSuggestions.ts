@@ -1,0 +1,135 @@
+import { loadData } from './db'
+import { getSupabaseUserId } from './supabaseClient'
+
+const MAX_SUGGESTIONS=8
+let activeInput:HTMLInputElement|null=null
+let suggestions:string[]=[]
+let dropdown:HTMLDivElement|null=null
+let requestToken=0
+
+function noteOwnerKey(ownerId?:string){return `spenza-note-suggestions:${ownerId||'local-device'}`}
+
+function cleanNote(value?:string){
+  const note=(value||'').trim()
+  if(!note)return ''
+  if(note==='Added from scanned receipt'||/^Receipt scanned in (USD|LBP)$/i.test(note)||note==='Paid from Bills')return ''
+  return note.endsWith(' · Paid from Bills')?note.slice(0,-' · Paid from Bills'.length).trim():note
+}
+
+function uniqueRecent(values:string[]){
+  const seen=new Set<string>()
+  const result:string[]=[]
+  for(const value of values){
+    const clean=cleanNote(value)
+    const key=clean.toLocaleLowerCase()
+    if(!clean||seen.has(key))continue
+    seen.add(key)
+    result.push(clean)
+  }
+  return result
+}
+
+function isNoteInput(target:EventTarget|null):target is HTMLInputElement{
+  if(!(target instanceof HTMLInputElement))return false
+  const label=target.closest('label')
+  if(!label)return false
+  const labelText=(label.childNodes[0]?.textContent||'').trim().toLocaleLowerCase()
+  return labelText==='note'&&!!target.closest('.refSheet')
+}
+
+function ensureDropdown(){
+  if(dropdown)return dropdown
+  dropdown=document.createElement('div')
+  dropdown.className='noteSuggestionsDropdown'
+  dropdown.setAttribute('role','listbox')
+  return dropdown
+}
+
+function hide(){
+  dropdown?.remove()
+  activeInput?.closest('label')?.classList.remove('noteSuggestionField')
+  activeInput=null
+}
+
+function setReactInputValue(input:HTMLInputElement,value:string){
+  const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')?.set
+  if(setter)setter.call(input,value)
+  else input.value=value
+  input.dispatchEvent(new Event('input',{bubbles:true}))
+  input.dispatchEvent(new Event('change',{bubbles:true}))
+}
+
+function render(){
+  if(!activeInput)return
+  const query=activeInput.value.trim().toLocaleLowerCase()
+  const filtered=suggestions.filter(value=>!query||value.toLocaleLowerCase().includes(query)).slice(0,MAX_SUGGESTIONS)
+  const menu=ensureDropdown()
+  menu.replaceChildren()
+  if(!filtered.length){menu.remove();return}
+  for(const value of filtered){
+    const button=document.createElement('button')
+    button.type='button'
+    button.className='noteSuggestionOption'
+    button.setAttribute('role','option')
+    button.textContent=value
+    button.addEventListener('pointerdown',event=>event.preventDefault())
+    button.addEventListener('click',()=>{
+      if(!activeInput)return
+      const input=activeInput
+      setReactInputValue(input,value)
+      hide()
+      input.focus()
+    })
+    menu.appendChild(button)
+  }
+  const label=activeInput.closest('label')
+  if(!label)return
+  label.classList.add('noteSuggestionField')
+  label.appendChild(menu)
+}
+
+async function loadSuggestions(input:HTMLInputElement){
+  const token=++requestToken
+  try{
+    const [data,ownerId]=await Promise.all([loadData(),getSupabaseUserId().catch(()=>undefined)])
+    if(token!==requestToken||activeInput!==input)return
+    const transactionNotes=data.transactions
+      .slice()
+      .sort((a,b)=>String(b.updatedAt||b.createdAt||b.date).localeCompare(String(a.updatedAt||a.createdAt||a.date)))
+      .map(item=>item.note||'')
+    const billNotes=data.bills
+      .slice()
+      .sort((a,b)=>String(b.updatedAt||b.createdAt||b.dueDate).localeCompare(String(a.updatedAt||a.createdAt||a.dueDate)))
+      .map(item=>item.note||'')
+    const storageKey=noteOwnerKey(ownerId)
+    let remembered:string[]=[]
+    try{remembered=JSON.parse(localStorage.getItem(storageKey)||'[]')}catch{remembered=[]}
+    suggestions=uniqueRecent([...transactionNotes,...billNotes,...remembered])
+    try{localStorage.setItem(storageKey,JSON.stringify(suggestions.slice(0,100)))}catch{}
+    render()
+  }catch{
+    suggestions=[]
+    render()
+  }
+}
+
+export function initNoteSuggestions(){
+  document.addEventListener('focusin',event=>{
+    if(!isNoteInput(event.target))return
+    activeInput=event.target
+    void loadSuggestions(activeInput)
+  })
+  document.addEventListener('input',event=>{
+    if(event.target===activeInput)render()
+  })
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&event.target===activeInput)hide()
+  })
+  document.addEventListener('focusout',event=>{
+    if(event.target!==activeInput)return
+    window.setTimeout(()=>{
+      if(dropdown?.contains(document.activeElement))return
+      hide()
+    },120)
+  })
+}
