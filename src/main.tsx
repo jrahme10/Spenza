@@ -25,6 +25,21 @@ import { initNoteSuggestions } from './lib/noteSuggestions'
 
 function financialFingerprint(data:Awaited<ReturnType<typeof loadData>>){return JSON.stringify({wallets:data.wallets,transactions:data.transactions,bills:data.bills})}
 
+function localToday(){
+  const now=new Date()
+  const year=now.getFullYear()
+  const month=String(now.getMonth()+1).padStart(2,'0')
+  const day=String(now.getDate()).padStart(2,'0')
+  return `${year}-${month}-${day}`
+}
+
+function resetDateFiltersToToday(){
+  const value=localToday()
+  localStorage.setItem('spenza-home-date',value)
+  localStorage.setItem('spenza-activity-date',value)
+  localStorage.setItem('spenza-insight-date',value)
+}
+
 function installPendingSync(){
   let retryTimer:number|undefined
   let lastAttemptAt=0
@@ -64,6 +79,7 @@ function installPendingSync(){
 }
 
 function bootstrap(){
+  resetDateFiltersToToday()
   initTheme()
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
