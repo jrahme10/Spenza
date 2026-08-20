@@ -41,6 +41,43 @@ function resetDateFiltersToToday(){
   localStorage.setItem('spenza-insight-date',value)
 }
 
+function installPopupScrollLock(){
+  const popupSelector='.overlay,.dialogOverlay,.calendarOverlay,.notificationOverlay,.notificationPanel,.securityOverlay,.lockOverlay,.cloudDataChoice'
+  let locked=false
+  let scrollY=0
+
+  const lock=()=>{
+    if(locked)return
+    locked=true
+    scrollY=window.scrollY
+    document.documentElement.classList.add('popup-scroll-locked')
+    document.body.classList.add('popup-scroll-locked')
+    document.body.style.position='fixed'
+    document.body.style.top=`-${scrollY}px`
+    document.body.style.left='0'
+    document.body.style.right='0'
+    document.body.style.width='100%'
+  }
+
+  const unlock=()=>{
+    if(!locked)return
+    locked=false
+    document.documentElement.classList.remove('popup-scroll-locked')
+    document.body.classList.remove('popup-scroll-locked')
+    document.body.style.position=''
+    document.body.style.top=''
+    document.body.style.left=''
+    document.body.style.right=''
+    document.body.style.width=''
+    window.scrollTo(0,scrollY)
+  }
+
+  const refresh=()=>{document.querySelector(popupSelector)?lock():unlock()}
+  const observer=new MutationObserver(refresh)
+  observer.observe(document.body,{childList:true,subtree:true})
+  refresh()
+}
+
 function installAutomaticSync(){
   let syncTimer:number|undefined
   let lastAttemptAt=0
@@ -93,6 +130,7 @@ function bootstrap(){
       <SyncStatusPill/>
     </React.StrictMode>,
   )
+  installPopupScrollLock()
   installAutomaticSync()
   initDynamicGreeting()
   initNoteSuggestions()
