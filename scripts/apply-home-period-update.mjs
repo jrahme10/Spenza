@@ -40,5 +40,13 @@ replace(
   'Home to Insights mapping'
 )
 
+// Keep the Insights page period selector consistent with Home:
+// Daily = selected month, Monthly = selected year, Calendar = exact selected date.
+replace(
+  "{(['daily','monthly','yearly'] as InsightPeriod[]).map(p=><button key={p} className={insightPeriod===p?'selected':''} onClick={()=>setInsightPeriod(p)}>{p}</button>)}",
+  "{(['monthly','yearly'] as InsightPeriod[]).map(p=><button key={p} className={(p==='monthly'&&insightPeriod==='monthly')||(p==='yearly'&&insightPeriod==='yearly')?'selected':''} onClick={()=>setInsightPeriod(p)}>{p==='monthly'?'daily':'monthly'}</button>)}<button className={`calendarFilterButton ${insightPeriod==='daily'?'selected':''}`} onClick={()=>setInsightPeriod('daily')}><span>Calendar</span></button>",
+  'Insights period buttons'
+)
+
 writeFileSync(path, source)
-console.log('Applied Home period update: Daily=month, Monthly=year, Yearly removed from Home')
+console.log('Applied period update: Home and Insights both use Daily=month, Monthly=year, Calendar=exact date')
