@@ -2,12 +2,14 @@ import { loadData } from './db'
 import { getSupabaseUserId } from './supabaseClient'
 
 const MAX_SUGGESTIONS=8
+type SuggestionKind='note'|'description'
 let activeInput:HTMLInputElement|null=null
+let activeKind:SuggestionKind|null=null
 let suggestions:string[]=[]
 let dropdown:HTMLDivElement|null=null
 let requestToken=0
 
-function noteOwnerKey(ownerId?:string){return `spenza-note-suggestions:${ownerId||'local-device'}`}
+function suggestionOwnerKey(kind:SuggestionKind,ownerId?:string){return `spenza-${kind}-suggestions:${ownerId||'local-device'}`}
 
 function cleanNote(value?:string){
   const note=(value||'').trim()
@@ -16,11 +18,13 @@ function cleanNote(value?:string){
   return note.endsWith(' · Paid from Bills')?note.slice(0,-' · Paid from Bills'.length).trim():note
 }
 
-function uniqueRecent(values:string[]){
+function cleanDescription(value?:string){return (value||'').trim()}
+
+function uniqueRecent(values:string[],cleaner:(value?:string)=>string){
   const seen=new Set<string>()
   const result:string[]=[]
   for(const value of values){
-    const clean=cleanNote(value)
+    const clean=cleaner(value)
     const key=clean.toLocaleLowerCase()
     if(!clean||seen.has(key))continue
     seen.add(key)
@@ -29,12 +33,14 @@ function uniqueRecent(values:string[]){
   return result
 }
 
-function isNoteInput(target:EventTarget|null):target is HTMLInputElement{
-  if(!(target instanceof HTMLInputElement))return false
+function suggestionInputKind(target:EventTarget|null):SuggestionKind|null{
+  if(!(target instanceof HTMLInputElement))return null
   const label=target.closest('label')
-  if(!label)return false
+  if(!label||!target.closest('.refSheet'))return null
   const labelText=(label.childNodes[0]?.textContent||'').trim().toLocaleLowerCase()
-  return labelText==='note'&&!!target.closest('.refSheet')
+  if(labelText==='note')return 'note'
+  if(labelText==='description')return 'description'
+  return null
 }
 
 function ensureDropdown(){
@@ -49,6 +55,7 @@ function hide(){
   dropdown?.remove()
   activeInput?.closest('label')?.classList.remove('noteSuggestionField')
   activeInput=null
+  activeKind=null
 }
 
 function setReactInputValue(input:HTMLInputElement,value:string){
@@ -88,23 +95,34 @@ function render(){
   label.appendChild(menu)
 }
 
-async function loadSuggestions(input:HTMLInputElement){
+async function loadSuggestions(input:HTMLInputElement,kind:SuggestionKind){
   const token=++requestToken
   try{
     const [data,ownerId]=await Promise.all([loadData(),getSupabaseUserId().catch(()=>undefined)])
-    if(token!==requestToken||activeInput!==input)return
-    const transactionNotes=data.transactions
+    if(token!==requestToken||activeInput!==input||activeKind!==kind)return
+    const sortedTransactions=data.transactions
       .slice()
       .sort((a,b)=>String(b.updatedAt||b.createdAt||b.date).localeCompare(String(a.updatedAt||a.createdAt||a.date)))
-      .map(item=>item.note||'')
-    const billNotes=data.bills
-      .slice()
-      .sort((a,b)=>String(b.updatedAt||b.createdAt||b.dueDate).localeCompare(String(a.updatedAt||a.createdAt||a.dueDate)))
-      .map(item=>item.note||'')
-    const storageKey=noteOwnerKey(ownerId)
+    const storageKey=suggestionOwnerKey(kind,ownerId)
     let remembered:string[]=[]
     try{remembered=JSON.parse(localStorage.getItem(storageKey)||'[]')}catch{remembered=[]}
-    suggestions=uniqueRecent([...transactionNotes,...billNotes,...remembered])
+    if(kind==='description'){
+      const descriptions=sortedTransactions.map(item=>{
+        const title=cleanDescription(item.title)
+        if(!title)return ''
+        if(title.toLocaleLowerCase()==='transaction')return ''
+        if(item.type==='expense'&&title.toLocaleLowerCase()===cleanDescription(item.category).toLocaleLowerCase())return ''
+        return title
+      })
+      suggestions=uniqueRecent([...descriptions,...remembered],cleanDescription)
+    }else{
+      const transactionNotes=sortedTransactions.map(item=>item.note||'')
+      const billNotes=data.bills
+        .slice()
+        .sort((a,b)=>String(b.updatedAt||b.createdAt||b.dueDate).localeCompare(String(a.updatedAt||a.createdAt||a.dueDate)))
+        .map(item=>item.note||'')
+      suggestions=uniqueRecent([...transactionNotes,...billNotes,...remembered],cleanNote)
+    }
     try{localStorage.setItem(storageKey,JSON.stringify(suggestions.slice(0,100)))}catch{}
     render()
   }catch{
@@ -115,9 +133,11 @@ async function loadSuggestions(input:HTMLInputElement){
 
 export function initNoteSuggestions(){
   document.addEventListener('focusin',event=>{
-    if(!isNoteInput(event.target))return
-    activeInput=event.target
-    void loadSuggestions(activeInput)
+    const kind=suggestionInputKind(event.target)
+    if(!kind)return
+    activeInput=event.target as HTMLInputElement
+    activeKind=kind
+    void loadSuggestions(activeInput,kind)
   })
   document.addEventListener('input',event=>{
     if(event.target===activeInput)render()
