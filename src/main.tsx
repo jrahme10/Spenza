@@ -24,7 +24,7 @@ import { loadData } from './lib/db'
 import { syncManager } from './lib/syncManager'
 import { initNoteSuggestions } from './lib/noteSuggestions'
 
-function financialFingerprint(data:Awaited<ReturnType<typeof loadData>>){return JSON.stringify({wallets:data.wallets,transactions:data.transactions,bills:data.bills})}
+function financialFingerprint(data:Awaited<ReturnType<typeof loadData>>){return JSON.stringify({wallets:data.wallets,transactions:data.transactions,bills:data.bills,categories:data.categories,usdToLbpRate:data.usdToLbpRate})}
 
 function localToday(){
   const now=new Date()
@@ -41,42 +41,47 @@ function resetDateFiltersToToday(){
   localStorage.setItem('spenza-insight-date',value)
 }
 
-function installPendingSync(){
-  let retryTimer:number|undefined
+function installAutomaticSync(){
+  let syncTimer:number|undefined
   let lastAttemptAt=0
-  let automaticSyncBlocked=false
-  syncManager.subscribe(state=>{
-    if(state.status==='error'||state.status==='cancelled')automaticSyncBlocked=true
-    else if(state.status==='synced')automaticSyncBlocked=false
-  })
-  const syncPending=async()=>{
-    if(automaticSyncBlocked)return
+  const MIN_SYNC_GAP_MS=3000
+  const FOREGROUND_REFRESH_MS=30000
+
+  const runSync=async()=>{
     const now=Date.now()
-    if(now-lastAttemptAt<3000)return
-    const before=await loadData()
-    if(before.sync.pendingChanges.length===0)return
+    if(now-lastAttemptAt<MIN_SYNC_GAP_MS)return
+    if(typeof navigator!=='undefined'&&!navigator.onLine)return
     lastAttemptAt=now
+    const before=await loadData()
     const beforeFingerprint=financialFingerprint(before)
     const result=await syncManager.run()
-    if(result.status==='error'||result.status==='cancelled'){automaticSyncBlocked=true;return}
     if(result.status==='synced'&&result.data&&beforeFingerprint!==financialFingerprint(result.data))window.location.reload()
   }
-  const scheduleSync=(delay=600)=>{
-    if(automaticSyncBlocked)return
-    if(retryTimer)window.clearTimeout(retryTimer)
-    retryTimer=window.setTimeout(()=>{void syncPending()},delay)
+
+  const scheduleSync=(delay=250)=>{
+    if(syncTimer)window.clearTimeout(syncTimer)
+    syncTimer=window.setTimeout(()=>{void runSync()},delay)
   }
-  const onOnline=()=>scheduleSync(500)
-  const onFocus=()=>scheduleSync(250)
-  const onPageShow=()=>scheduleSync(250)
-  const onVisibility=()=>{if(document.visibilityState==='visible')scheduleSync(250)}
-  const onResume=()=>scheduleSync(250)
+
+  const onOnline=()=>scheduleSync(250)
+  const onFocus=()=>scheduleSync(150)
+  const onPageShow=()=>scheduleSync(150)
+  const onVisibility=()=>{if(document.visibilityState==='visible')scheduleSync(150)}
+  const onResume=()=>scheduleSync(150)
   window.addEventListener('online',onOnline)
   window.addEventListener('focus',onFocus)
   window.addEventListener('pageshow',onPageShow)
   window.addEventListener('resume',onResume)
   document.addEventListener('visibilitychange',onVisibility)
+
+  // Always check the cloud at startup, even when this device has no local
+  // pending changes. This is what lets a second device download changes
+  // created on the first device.
   scheduleSync(800)
+
+  // While Spenza stays open, periodically pull remote changes so another
+  // signed-in device is reflected without requiring a manual Sync now.
+  window.setInterval(()=>{if(document.visibilityState==='visible')void runSync()},FOREGROUND_REFRESH_MS)
 }
 
 function bootstrap(){
@@ -88,7 +93,7 @@ function bootstrap(){
       <SyncStatusPill/>
     </React.StrictMode>,
   )
-  installPendingSync()
+  installAutomaticSync()
   initDynamicGreeting()
   initNoteSuggestions()
   registerPwa()
