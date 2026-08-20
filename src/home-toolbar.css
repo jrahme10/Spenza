@@ -1,6 +1,5 @@
-/* Home control area based on the approved design.
-   Mobile uses two clean rows so controls never overlap:
-   account + wallet, then Daily / Monthly / Calendar. */
+/* Home control area: Account on the first row, then Daily / Monthly / Calendar.
+   Wallet shortcut stays beside the account selector. */
 .compactHomeAccount{display:grid!important;grid-template-columns:minmax(0,1fr) 52px;grid-template-areas:"account wallet" "period period";align-items:end!important;gap:12px 10px!important;width:100%;min-width:0;margin:0 0 18px!important}
 .compactHomeAccount>label{grid-area:account;display:block!important;min-width:0;margin:0!important;color:var(--muted,#8da0b3)}
 .compactHomeAccount>label select{display:block;width:100%;height:52px;margin-top:7px!important;padding:0 16px!important;border:1px solid var(--line,#263746)!important;border-radius:17px!important;background:var(--surface,#0d1b2a)!important;color:inherit;min-width:0}
@@ -12,12 +11,11 @@
 .compactHomeAccount .homePeriodFilters .calendarFilterButton{position:relative;cursor:pointer}
 .compactHomeAccount .homePeriodFilters .calendarFilterButton input[type="date"]{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;margin:0!important;padding:0!important;opacity:0;cursor:pointer;border:0!important}
 .compactHomeAccount .homePeriodFilters .calendarFilterButton svg{flex:0 0 auto;width:15px;height:15px}
-
-/* There must never be a fourth visible Yearly control on Home. */
 .compactHomeAccount .homePeriodFilters button:nth-of-type(3){display:none!important}
 
+/* Keep this vertical order on every screen size: Account first, filters underneath. */
 @media(min-width:560px){
- .compactHomeAccount{grid-template-columns:minmax(180px,1.25fr) 52px minmax(310px,1.7fr);grid-template-areas:"account wallet period";align-items:end!important}
+ .compactHomeAccount{grid-template-columns:minmax(0,1fr) 52px;grid-template-areas:"account wallet" "period period";align-items:end!important}
 }
 @media(max-width:360px){
  .compactHomeAccount{grid-template-columns:minmax(0,1fr) 48px;gap:10px 8px!important}
