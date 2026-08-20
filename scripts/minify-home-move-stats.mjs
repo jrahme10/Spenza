@@ -33,27 +33,21 @@ const overviewStart=source.indexOf(`   <div className="refSectionHead"><h2>{home
 const recentStart=source.indexOf(`   <section className="activity homeActivity">`,overviewStart)
 if(overviewStart>=0&&recentStart>overviewStart) source=source.slice(0,overviewStart)+source.slice(recentStart)
 
-// Home recent transactions stay on Home and load automatically while scrolling.
 const oldRecent=`   <section className="activity homeActivity"><div className="refSectionHead"><h2>Recent Transactions</h2><button onClick={openAllActivity}>See All</button></div>{homePeriodTx.length?homePeriodTx.map(t=><TxRow t={t} key={t.id}/>):<div className="empty compact">No transactions for this account and period.</div>}</section>`
 const newRecent=`   <section className="activity homeActivity"><div className="refSectionHead"><h2>Recent Transactions</h2></div>{homePeriodTx.length?<>{homePeriod==='daily'?Object.entries(homePeriodTx.slice(0,homeRecentLimit).reduce((groups,tx)=>{(groups[tx.date]??=[]).push(tx);return groups},{} as Record<string,Transaction[]>)).sort(([a],[b])=>b.localeCompare(a)).map(([day,items])=><section className="homeDayGroup" key={day}><div className="homeDayHeader">{new Date(day+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>{items.map(t=><TxRow t={t} key={t.id}/>)}</section>):homePeriodTx.slice(0,homeRecentLimit).map(t=><TxRow t={t} key={t.id}/>)}</>:<div className="empty compact">No transactions for this account and period.</div>}</section>`
 if(source.includes(oldRecent)) source=source.replace(oldRecent,newRecent)
 else if(source.includes('homeDayGroup')) source=source.replace(/   <section className="activity homeActivity">[^\n]*<\/section>/,newRecent)
 else throw new Error('Dashboard transform failed: Home Recent Transactions block not found')
 
-// Remove the standalone Activity / Transactions page.
 source=source.replace(/\n  \{tab==='Activity'&&<section className="page refPage">[^\n]*<\/section>\}/,'')
-
-// Remove Transactions from bottom navigation and keep Add centered among remaining main actions.
 source=source.replace(`[['Home',Home],['Activity',CreditCard],['Add',Plus],['Bills',CalendarClock],['Insights',BarChart3],['Settings',Settings]]`,`[['Home',Home],['Bills',CalendarClock],['Add',Plus],['Insights',BarChart3],['Settings',Settings]]`)
 source=source.replace(`if(label==='Activity')setActivityWalletId(null);setTab(label)`,`setTab(label)`)
-
-// Account cards now return to Home filtered to that account instead of opening the removed page.
 source=source.replace(` const openWalletActivity=(id:string)=>{setActivityWalletId(id);setTab('Activity')}`,` const openWalletActivity=(id:string)=>{setHomeWalletId(id);setHomeRecentLimit(12);setTab('Home')}`)
 source=source.replace(` const openAllActivity=()=>{setActivityWalletId(null);setTab('Activity')}`,` const openAllActivity=()=>{setTab('Home')}`)
 
-const insightGrid=`{insightWallet&&<><div className="insightGrid refInsightGrid"><article><span>Expenses</span><strong>{money(insightExpenses,insightWallet.currency)}</strong></article><article><span>Income</span><strong>{money(insightIncome,insightWallet.currency)}</strong></article><article><span>Transactions</span><strong>{insightTransactions.length}</strong></article><article><span>Transfers Out</span><strong>{money(insightTransfers,insightWallet.currency)}</strong></article></div>`
-const insightSummary=`{insightWallet&&<><div className="activitySummary homeCashflowSummary insightCashflowSummary"><article><span>Income</span><strong style={{color:'#4aa8ff'}}>{money(insightIncome,insightWallet.currency)}</strong></article><article><span>Exp.</span><strong style={{color:'#ff5f68'}}>{money(insightExpenses,insightWallet.currency)}</strong></article><article><span>Net</span><strong>{money(insightIncome-insightExpenses,insightWallet.currency)}</strong></article></div><div className="insightGrid refInsightGrid"><article><span>Expenses</span><strong>{money(insightExpenses,insightWallet.currency)}</strong></article><article><span>Income</span><strong>{money(insightIncome,insightWallet.currency)}</strong></article><article><span>Transactions</span><strong>{insightTransactions.length}</strong></article><article><span>Transfers Out</span><strong>{money(insightTransfers,insightWallet.currency)}</strong></article></div>`
-if(!source.includes('insightCashflowSummary')){if(!source.includes(insightGrid))throw new Error('Dashboard transform failed: Insights grid not found');source=source.replace(insightGrid,insightSummary)}
+// Insights is for statistics/charts. Remove the large Expenses, Income, Transactions and Transfers Out metric cards.
+source=source.replace(/<div className="activitySummary homeCashflowSummary insightCashflowSummary">[^\n]*?<\/div>/g,'')
+source=source.replace(/<div className="insightGrid refInsightGrid">[^\n]*?<\/div>/g,'')
 
 writeFileSync(path,source)
-console.log('Removed standalone Transactions page; Home owns transaction history')
+console.log('Removed standalone Transactions page and Insights summary metric cards')
