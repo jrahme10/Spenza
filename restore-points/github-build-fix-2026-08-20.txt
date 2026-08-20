@@ -1,0 +1,1 @@
+Restore point before fixing the GitHub Pages build error introduced in App.tsx. Main before fix: 6b2e2b7276413f46b884f54eef277566a1104bb0
