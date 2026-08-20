@@ -1,25 +1,19 @@
-/* Home control area: Account on the first row, then Daily / Monthly / Calendar.
-   Wallet shortcut stays beside the account selector. */
+/* Home control area: Account on the first row, then centered Daily / Monthly / Calendar. */
 .compactHomeAccount{display:grid!important;grid-template-columns:minmax(0,1fr) 52px;grid-template-areas:"account wallet" "period period";align-items:end!important;gap:12px 10px!important;width:100%;min-width:0;margin:0 0 18px!important}
 .compactHomeAccount>label{grid-area:account;display:block!important;min-width:0;margin:0!important;color:var(--muted,#8da0b3)}
 .compactHomeAccount>label select{display:block;width:100%;height:52px;margin-top:7px!important;padding:0 16px!important;border:1px solid var(--line,#263746)!important;border-radius:17px!important;background:var(--surface,#0d1b2a)!important;color:inherit;min-width:0}
 .homeAccountsIcon{grid-area:wallet;width:52px;height:52px;padding:0;border:1px solid var(--line,#263746);border-radius:17px;background:var(--surface,#0d1b2a);color:var(--accent,#19dfbd);display:grid;place-items:center;box-shadow:none}
 .homeAccountsIcon svg{width:25px;height:25px;stroke-width:1.8}
 .homeAccountsIcon:active{transform:scale(.96)}
-.compactHomeAccount .homePeriodFilters{grid-area:period;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;gap:8px!important;width:100%;min-width:0;margin:0!important;overflow:visible!important}
-.compactHomeAccount .homePeriodFilters button,.compactHomeAccount .homePeriodFilters .calendarFilterButton{box-sizing:border-box;width:100%;height:44px;min-width:0;margin:0!important;padding:0 8px!important;border-radius:22px!important;display:flex!important;align-items:center;justify-content:center;gap:5px;white-space:nowrap;font-size:12px;line-height:1;overflow:hidden}
-.compactHomeAccount .homePeriodFilters .calendarFilterButton{display:flex!important;visibility:visible!important;opacity:1!important;position:relative;cursor:pointer}
-.compactHomeAccount .homePeriodFilters .calendarFilterButton input[type="date"]{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;margin:0!important;padding:0!important;opacity:0;cursor:pointer;border:0!important}
-.compactHomeAccount .homePeriodFilters .calendarFilterButton svg{flex:0 0 auto;width:15px;height:15px}
+.compactHomeAccount .homePeriodFilters{grid-area:period;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;justify-content:center;gap:8px!important;width:100%;min-width:0;margin:0 auto!important;overflow:visible!important;text-align:center}
+.compactHomeAccount .homePeriodFilters button,.compactHomeAccount .homePeriodFilters .calendarFilterButton{box-sizing:border-box;width:100%;height:44px;min-width:0;margin:0!important;padding:0 8px!important;border-radius:22px!important;display:flex!important;align-items:center;justify-content:center;gap:6px;white-space:nowrap;font-size:12px;line-height:1;overflow:hidden;text-align:center}
+.compactHomeAccount .homePeriodFilters button svg,.compactHomeAccount .homePeriodFilters .calendarFilterButton svg{flex:0 0 auto;width:15px;height:15px}
+.compactHomeAccount .homePeriodFilters .calendarFilterButton{visibility:visible!important;opacity:1!important;position:relative;cursor:pointer}
 
-/* Keep this vertical order on every screen size: Account first, filters underneath. */
-@media(min-width:560px){
- .compactHomeAccount{grid-template-columns:minmax(0,1fr) 52px;grid-template-areas:"account wallet" "period period";align-items:end!important}
-}
-@media(max-width:360px){
- .compactHomeAccount{grid-template-columns:minmax(0,1fr) 48px;gap:10px 8px!important}
- .homeAccountsIcon{width:48px;height:48px;border-radius:16px}
- .compactHomeAccount>label select{height:48px}
- .compactHomeAccount .homePeriodFilters{gap:6px!important}
- .compactHomeAccount .homePeriodFilters button,.compactHomeAccount .homePeriodFilters .calendarFilterButton{height:42px;padding:0 5px!important;font-size:11px}
-}
+.homeDayGroup{margin:0 0 14px}
+.homeDayHeader{position:sticky;top:0;z-index:1;padding:7px 2px 6px;margin-bottom:2px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted,#8da0b3);background:var(--background,#07131f)}
+.homeLoadMore{display:flex;align-items:center;justify-content:center;width:min(210px,70%);height:42px;margin:16px auto 4px;border:1px solid var(--line,#263746);border-radius:21px;background:var(--surface,#0d1b2a);color:var(--accent,#19dfbd);font-weight:700}
+.homeLoadMore:active{transform:scale(.98)}
+
+@media(min-width:560px){.compactHomeAccount{grid-template-columns:minmax(0,1fr) 52px;grid-template-areas:"account wallet" "period period";align-items:end!important}.compactHomeAccount .homePeriodFilters{max-width:520px}}
+@media(max-width:360px){.compactHomeAccount{grid-template-columns:minmax(0,1fr) 48px;gap:10px 8px!important}.homeAccountsIcon{width:48px;height:48px;border-radius:16px}.compactHomeAccount>label select{height:48px}.compactHomeAccount .homePeriodFilters{gap:6px!important}.compactHomeAccount .homePeriodFilters button,.compactHomeAccount .homePeriodFilters .calendarFilterButton{height:42px;padding:0 5px!important;font-size:11px;gap:4px}}
