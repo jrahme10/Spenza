@@ -9,6 +9,7 @@ import SecuritySettings from './components/SecuritySettings'
 import CloudSyncSettings from './components/CloudSyncSettings'
 import AppLockGate from './components/AppLockGate'
 import NotificationCenter, { NotificationBell } from './components/NotificationCenter'
+import TransactionCalendar from './components/TransactionCalendar'
 import { Currency, defaultData, loadData, saveData, SpenzaData, Transaction, TransactionType, uid, Wallet } from './lib/db'
 import { localRepository } from './lib/repository'
 
@@ -18,27 +19,8 @@ type Dialog={title:string;message:string;kind?:'danger'|'info';confirmLabel?:str
 type WalletForm={id?:string;name:string;currency:Currency;openingBalance:string;originalCurrency?:Currency}
 type ReceiptSource={amount:number;currency?:Currency}
 type InsightPeriod='daily'|'monthly'|'yearly'
-type HomePeriod=InsightPeriod|'custom'|'todate'
+type HomePeriod=InsightPeriod|'custom'
 const palette=['#22d3ae','#7650ea','#2d94ee','#17a9a5','#a150e3']
-
-type TransactionCalendarProps={value:string;markedDates:Set<string>;title:string;onSelect:(date:string)=>void;onClose:()=>void}
-const TransactionCalendar=({value,markedDates,title,onSelect,onClose}:TransactionCalendarProps)=>{
- const [viewMonth,setViewMonth]=useState(value.slice(0,7))
- useEffect(()=>setViewMonth(value.slice(0,7)),[value])
- const [year,month]=viewMonth.split('-').map(Number)
- const firstDay=new Date(year,month-1,1).getDay()
- const daysInMonth=new Date(year,month,0).getDate()
- const cells=[...Array(firstDay).fill(null),...Array.from({length:daysInMonth},(_,i)=>i+1)]
- const monthLabel=new Date(year,month-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'})
- const shiftMonth=(direction:number)=>{const d=new Date(year,month-1+direction,1);setViewMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)}
- return <div className="calendarOverlay" onClick={onClose}><div className="transactionCalendar" onClick={e=>e.stopPropagation()}>
-  <div className="calendarTitleRow"><div><span className="eyebrow">FILTER BY DATE</span><h2>{title}</h2></div><button className="calendarClose" onClick={onClose}><X/></button></div>
-  <div className="calendarMonthNav"><button onClick={()=>shiftMonth(-1)} aria-label="Previous month"><ChevronLeft/></button><strong>{monthLabel}</strong><button onClick={()=>shiftMonth(1)} aria-label="Next month"><ChevronRight/></button></div>
-  <div className="calendarWeekdays">{['S','M','T','W','T','F','S'].map((d,i)=><span key={`${d}-${i}`}>{d}</span>)}</div>
-  <div className="calendarGrid">{cells.map((day,i)=>{if(!day)return <span className="calendarEmpty" key={`e-${i}`}/>;const date=`${viewMonth}-${String(day).padStart(2,'0')}`;const marked=markedDates.has(date);const selected=date===value;return <button key={date} className={`${marked?'hasTransactions ':''}${selected?'selectedDay':''}`} onClick={()=>onSelect(date)}><span>{day}</span>{marked&&<i aria-label="Has transactions"/>}</button>})}</div>
-  <div className="calendarLegend"><i/> Days with transactions</div>
- </div></div>
-}
 
 export default function App(){
  const [data,setData]=useState<SpenzaData>(defaultData)
@@ -53,7 +35,7 @@ export default function App(){
  const [insightPeriod,setInsightPeriod]=useState<InsightPeriod>(()=>{const v=localStorage.getItem('spenza-insight-period') as InsightPeriod|null;return v&&['daily','monthly','yearly'].includes(v)?v:'daily'})
  const [insightDate,setInsightDate]=useState(()=>localStorage.getItem('spenza-insight-date')||today())
  const [homeWalletId,setHomeWalletId]=useState(()=>localStorage.getItem('spenza-home-wallet-id')||'')
- const [homePeriod,setHomePeriod]=useState<HomePeriod>(()=>{const v=localStorage.getItem('spenza-home-period') as HomePeriod|null;return v==='todate'?'daily':v&&['daily','monthly','yearly','custom'].includes(v)?v:'daily'})
+ const [homePeriod,setHomePeriod]=useState<HomePeriod>(()=>{const v=localStorage.getItem('spenza-home-period');return v==='todate'?'daily':v&&['daily','monthly','yearly','custom'].includes(v)?v as HomePeriod:'daily'})
  const [homeDate,setHomeDate]=useState(()=>localStorage.getItem('spenza-home-date')||today())
  const [rateInput,setRateInput]=useState(String(defaultData.usdToLbpRate||89500))
  const [open,setOpen]=useState(false)
@@ -176,7 +158,7 @@ export default function App(){
    <div className="accountSummary homeAvailableAmount"><span>Available Amount</span><strong>{homeWallet?money(homeAvailable,homeWallet.currency):'—'}</strong></div>
    <div className="refSectionHead"><h2>Accounts</h2><button onClick={()=>setTab('Wallets')}>See All</button></div>
    {data.wallets.length?<div className="accountRail">{data.wallets.slice(0,4).map((w,i)=><button className={`accountTile accountTone${i%4}${homeWallet?.id===w.id?' selectedAccount':''}`} key={w.id} onClick={()=>setHomeWalletId(w.id)}><div><b>{w.name}</b><span>{w.currency}</span></div><strong>{money(walletBalance(w.id),w.currency)}</strong></button>)}</div>:<button className="emptyWalletCta" onClick={addWallet}><WalletCards/><span><b>Create your first wallet</b><small>Add cash, bank, or card balances before recording expenses.</small></span></button>}
-   <div className="refSectionHead"><h2>{homePeriodLabel} Overview</h2><button onClick={()=>{if(homeWallet)setInsightWalletId(homeWallet.id);setInsightPeriod(homePeriod==='custom'?'daily':homePeriod);setInsightDate(homeDate);setTab('Insights')}}>See All</button></div>
+   <div className="refSectionHead"><h2>{homePeriodLabel} Overview</h2><button onClick={()=>{if(homeWallet)setInsightWalletId(homeWallet.id);setInsightPeriod(homePeriod==='monthly'||homePeriod==='yearly'?homePeriod:'daily');setInsightDate(homeDate);setTab('Insights')}}>See All</button></div>
    <div className="overviewGrid"><article className="overviewIncome"><span>Total Income</span><strong>{homeWallet?money(homeIncome,homeWallet.currency):'—'}</strong><small>{homeWallet?`Expenses ${money(homeExpense,homeWallet.currency)}`:'Create a wallet first'}</small></article><article><span>Top Categories</span>{categoryTotals.slice(0,3).length?categoryTotals.slice(0,3).map(x=><div className="miniCategory" key={x.name}><span>{x.name}</span><b>{money(x.value,homeWallet?.currency||'USD')}</b></div>):<small>No spending yet</small>}</article></div>
    <article className="categoryPanel"><div className="refSectionHead compact"><h2>Expenses by Category</h2></div><div className="categoryChart"><div className="donut" style={{background:donutBackground}}><i/></div><div className="legend">{categoryTotals.slice(0,5).map((x,i)=><div key={x.name}><span><i style={{background:palette[i%palette.length]}}/>{x.name}</span><b>{categoryTotal?Math.round(x.value/categoryTotal*100):0}%</b></div>)}{!categoryTotals.length&&<small>No expense data yet</small>}</div></div></article>
    <section className="activity homeActivity"><div className="refSectionHead"><h2>Recent Transactions</h2><button onClick={openAllActivity}>See All</button></div>{homePeriodTx.length?homePeriodTx.map(t=><TxRow t={t} key={t.id}/>):<div className="empty compact">No transactions for this account and period.</div>}</section>
