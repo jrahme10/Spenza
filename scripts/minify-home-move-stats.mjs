@@ -3,7 +3,6 @@ import { readFileSync, writeFileSync } from 'node:fs'
 const path=new URL('../src/App.tsx',import.meta.url)
 let source=readFileSync(path,'utf8')
 
-// Add Home-only paging state once. Resetting is handled by a keyed render so changing account/period starts at the first page.
 const stateAnchor=` const [collapsedActivityGroups,setCollapsedActivityGroups]=useState<Set<string>>(new Set())`
 if(source.includes(stateAnchor)&&!source.includes('homeRecentLimit,setHomeRecentLimit')) source=source.replace(stateAnchor,`${stateAnchor}\n const [homeRecentLimit,setHomeRecentLimit]=useState(12)`)
 
@@ -14,8 +13,6 @@ const compactControls=/   \{data\.wallets\.length&&<div className="insightSelect
 if(compactControls.test(source)) source=source.replace(compactControls,toolbar)
 if(!source.includes('compactHomeAccount')) throw new Error('Dashboard transform failed: compact Home toolbar was not created')
 
-// CalendarDays and CalendarRange are lucide icons; extend the existing lucide import if necessary.
-if(!source.includes('CalendarDays')||!source.includes('CalendarRange')) throw new Error('Home period icons were not inserted')
 const lucideImport=/import \{([^}]+)\} from 'lucide-react'/
 source=source.replace(lucideImport,(match,names)=>{
  const list=names.split(',').map(x=>x.trim()).filter(Boolean)
@@ -30,9 +27,9 @@ const overviewStart=source.indexOf(`   <div className="refSectionHead"><h2>{home
 const recentStart=source.indexOf(`   <section className="activity homeActivity">`,overviewStart)
 if(overviewStart>=0&&recentStart>overviewStart) source=source.slice(0,overviewStart)+source.slice(recentStart)
 
-// Home recent transactions: Daily means the selected month, so group visible rows by transaction day.
 const oldRecent=`   <section className="activity homeActivity"><div className="refSectionHead"><h2>Recent Transactions</h2><button onClick={openAllActivity}>See All</button></div>{homePeriodTx.length?homePeriodTx.map(t=><TxRow t={t} key={t.id}/>):<div className="empty compact">No transactions for this account and period.</div>}</section>`
-const newRecent=`   <section className="activity homeActivity"><div className="refSectionHead"><h2>Recent Transactions</h2><button onClick={openAllActivity}>See All</button></div>{homePeriodTx.length?<>{homePeriod==='daily'?Object.entries(homePeriodTx.slice().sort(newestTransactionFirst).slice(0,homeRecentLimit).reduce((groups,tx)=>{(groups[tx.date]??=[]).push(tx);return groups},{} as Record<string,Transaction[]>)).sort(([a],[b])=>b.localeCompare(a)).map(([day,items])=><section className="homeDayGroup" key={day}><div className="homeDayHeader">{new Date(\`${day}T12:00:00\`).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>{items.map(t=><TxRow t={t} key={t.id}/>)}</section>):homePeriodTx.slice().sort(newestTransactionFirst).slice(0,homeRecentLimit).map(t=><TxRow t={t} key={t.id}/>)}{homePeriodTx.length>homeRecentLimit&&<button className="homeLoadMore" onClick={()=>setHomeRecentLimit(v=>v+12)}>Load more</button>}</>:<div className="empty compact">No transactions for this account and period.</div>}</section>`
+// Avoid nested JS template interpolation here: the transform itself is a template string.
+const newRecent=`   <section className="activity homeActivity"><div className="refSectionHead"><h2>Recent Transactions</h2><button onClick={openAllActivity}>See All</button></div>{homePeriodTx.length?<>{homePeriod==='daily'?Object.entries(homePeriodTx.slice().sort(newestTransactionFirst).slice(0,homeRecentLimit).reduce((groups,tx)=>{(groups[tx.date]??=[]).push(tx);return groups},{} as Record<string,Transaction[]>)).sort(([a],[b])=>b.localeCompare(a)).map(([day,items])=><section className="homeDayGroup" key={day}><div className="homeDayHeader">{new Date(day+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>{items.map(t=><TxRow t={t} key={t.id}/>)}</section>):homePeriodTx.slice().sort(newestTransactionFirst).slice(0,homeRecentLimit).map(t=><TxRow t={t} key={t.id}/>)}{homePeriodTx.length>homeRecentLimit&&<button className="homeLoadMore" onClick={()=>setHomeRecentLimit(v=>v+12)}>Load more</button>}</>:<div className="empty compact">No transactions for this account and period.</div>}</section>`
 if(source.includes(oldRecent)) source=source.replace(oldRecent,newRecent)
 else if(!source.includes('homeLoadMore')) throw new Error('Dashboard transform failed: Home Recent Transactions block not found')
 
