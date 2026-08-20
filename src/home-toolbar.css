@@ -1,0 +1,12 @@
+/* Compact Home toolbar: Account dropdown -> wallet shortcut -> Daily / Monthly / Calendar */
+.homePeriodFilters{display:flex;align-items:center;gap:7px;margin-bottom:0;overflow:visible;flex:1;min-width:0}
+.compactHomeAccount{display:flex!important;align-items:flex-end!important;gap:8px!important;margin:0 0 17px!important;width:100%;min-width:0}
+.compactHomeAccount>label{flex:0 1 42%;min-width:0;margin:0!important}
+.compactHomeAccount>label select{width:100%;height:44px;margin-top:6px!important;border-radius:14px!important}
+.homeAccountsIcon{flex:0 0 44px;width:44px;height:44px;padding:0;border:1px solid var(--line,#263746);border-radius:14px;background:var(--surface,#0d1b2a);color:var(--accent,#19dfbd);display:grid;place-items:center;box-shadow:none}
+.homeAccountsIcon svg{width:22px;height:22px;stroke-width:1.8}
+.homeAccountsIcon:active{transform:scale(.96)}
+.compactHomeAccount .homePeriodFilters{margin:0!important}
+.compactHomeAccount .homePeriodFilters button{height:44px;min-width:0;padding:0 11px;white-space:nowrap}
+@media(max-width:420px){.compactHomeAccount{gap:6px}.compactHomeAccount>label{flex-basis:36%}.compactHomeAccount .homePeriodFilters{gap:5px}.compactHomeAccount .homePeriodFilters button{padding:0 8px;font-size:11px}.homeAccountsIcon{flex-basis:42px;width:42px;height:42px}}
+@media(max-width:360px){.compactHomeAccount{flex-wrap:wrap}.compactHomeAccount>label{flex:1 1 calc(100% - 50px)}.compactHomeAccount .homePeriodFilters{order:3;flex-basis:100%}}
