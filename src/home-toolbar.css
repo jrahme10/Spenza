@@ -8,10 +8,9 @@
 .homeAccountsIcon:active{transform:scale(.96)}
 .compactHomeAccount .homePeriodFilters{grid-area:period;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;gap:8px!important;width:100%;min-width:0;margin:0!important;overflow:visible!important}
 .compactHomeAccount .homePeriodFilters button,.compactHomeAccount .homePeriodFilters .calendarFilterButton{box-sizing:border-box;width:100%;height:44px;min-width:0;margin:0!important;padding:0 8px!important;border-radius:22px!important;display:flex!important;align-items:center;justify-content:center;gap:5px;white-space:nowrap;font-size:12px;line-height:1;overflow:hidden}
-.compactHomeAccount .homePeriodFilters .calendarFilterButton{position:relative;cursor:pointer}
+.compactHomeAccount .homePeriodFilters .calendarFilterButton{display:flex!important;visibility:visible!important;opacity:1!important;position:relative;cursor:pointer}
 .compactHomeAccount .homePeriodFilters .calendarFilterButton input[type="date"]{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;margin:0!important;padding:0!important;opacity:0;cursor:pointer;border:0!important}
 .compactHomeAccount .homePeriodFilters .calendarFilterButton svg{flex:0 0 auto;width:15px;height:15px}
-.compactHomeAccount .homePeriodFilters button:nth-of-type(3){display:none!important}
 
 /* Keep this vertical order on every screen size: Account first, filters underneath. */
 @media(min-width:560px){
