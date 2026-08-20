@@ -1,23 +1,28 @@
 import { CalendarClock } from 'lucide-react'
 
-export type HomePeriod = 'daily' | 'monthly' | 'yearly' | 'custom'
+export type HomePeriod = 'daily' | 'monthly' | 'custom'
 
-type Props = {
+export type HomePeriodFilterProps = {
   value: HomePeriod
   onChange: (period: Exclude<HomePeriod, 'custom'>) => void
   onCalendar: () => void
 }
 
-export default function HomePeriodFilters({ value, onChange, onCalendar }: Props) {
+const periodOptions: Array<{ value: Exclude<HomePeriod, 'custom'>; label: string }> = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'monthly', label: 'Monthly' },
+]
+
+export default function HomePeriodFilters({ value, onChange, onCalendar }: HomePeriodFilterProps) {
   return (
     <div className="filters refFilters periodFilters homePeriodFilters">
-      {(['daily', 'monthly', 'yearly'] as const).map(period => (
+      {periodOptions.map(period => (
         <button
-          key={period}
-          className={value === period ? 'selected' : ''}
-          onClick={() => onChange(period)}
+          key={period.value}
+          className={value === period.value ? 'selected' : ''}
+          onClick={() => onChange(period.value)}
         >
-          {period}
+          {period.label}
         </button>
       ))}
       <button
