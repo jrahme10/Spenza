@@ -12,6 +12,7 @@ import './spenza-design.css'
 import './theme-settings.css'
 import './spenza-layout.css'
 import './home-summary.css'
+import './home-toolbar.css'
 import './bills.css'
 import './reset-danger.css'
 import './center-add.css'
@@ -76,13 +77,7 @@ function installAutomaticSync(){
   window.addEventListener('resume',onResume)
   document.addEventListener('visibilitychange',onVisibility)
 
-  // Always check the cloud at startup, even when this device has no local
-  // pending changes. This is what lets a second device download changes
-  // created on the first device.
   scheduleSync(800)
-
-  // While Spenza stays open, periodically pull remote changes so another
-  // signed-in device is reflected without requiring a manual Sync now.
   window.setInterval(()=>{if(document.visibilityState==='visible')void runSync()},FOREGROUND_REFRESH_MS)
 }
 
