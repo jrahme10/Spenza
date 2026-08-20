@@ -12,13 +12,22 @@ function visibleEditableFields(sheet: Element) {
   })
 }
 
+function revealField(field: HTMLElement) {
+  window.setTimeout(() => {
+    field.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+  }, 120)
+}
+
+function focusAndReveal(field: HTMLElement, selectValue = false) {
+  field.focus({ preventScroll: true })
+  if (selectValue && field instanceof HTMLInputElement) field.select()
+  revealField(field)
+}
+
 function focusAmount(sheet: Element) {
   const amount = sheet.querySelector<HTMLInputElement>('input.amountInput')
   if (!amount) return
-  window.setTimeout(() => {
-    amount.focus({ preventScroll: true })
-    amount.select()
-  }, 80)
+  window.setTimeout(() => focusAndReveal(amount, true), 80)
 }
 
 export function initTransactionFormKeyboard() {
@@ -37,7 +46,7 @@ export function initTransactionFormKeyboard() {
     event.preventDefault()
     const next = fields[index + 1]
     if (next) {
-      next.focus()
+      focusAndReveal(next)
       return
     }
 
