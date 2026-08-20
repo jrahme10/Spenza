@@ -24,6 +24,7 @@ import { registerPwa } from './lib/pwa'
 import { loadData } from './lib/db'
 import { syncManager } from './lib/syncManager'
 import { initNoteSuggestions } from './lib/noteSuggestions'
+import { initTransactionFormKeyboard } from './lib/transactionFormKeyboard'
 
 function financialFingerprint(data:Awaited<ReturnType<typeof loadData>>){return JSON.stringify({wallets:data.wallets,transactions:data.transactions,bills:data.bills,categories:data.categories,usdToLbpRate:data.usdToLbpRate})}
 
@@ -97,6 +98,7 @@ function bootstrap(){
   installAutomaticSync()
   initDynamicGreeting()
   initNoteSuggestions()
+  initTransactionFormKeyboard()
   registerPwa()
 }
 
