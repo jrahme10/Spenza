@@ -9,6 +9,8 @@
 .compactHomeAccount .homePeriodFilters button,.compactHomeAccount .homePeriodFilters .calendarFilterButton{box-sizing:border-box;width:100%;height:44px;min-width:0;margin:0!important;padding:0 8px!important;border-radius:22px!important;display:flex!important;align-items:center;justify-content:center;gap:6px;white-space:nowrap;font-size:12px;line-height:1;overflow:hidden;text-align:center}
 .compactHomeAccount .homePeriodFilters button svg,.compactHomeAccount .homePeriodFilters .calendarFilterButton svg{flex:0 0 auto;width:15px;height:15px}
 .compactHomeAccount .homePeriodFilters .calendarFilterButton{visibility:visible!important;opacity:1!important;position:relative;cursor:pointer}
+.homeEmptyWalletCta{width:100%;min-height:76px;margin:0 0 18px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--accent,#19dfbd) 45%,var(--line,#263746));border-radius:18px;background:color-mix(in srgb,var(--accent,#19dfbd) 6%,var(--surface,#0d1b2a));color:inherit;display:flex;align-items:center;gap:13px;text-align:left;cursor:pointer}
+.homeEmptyWalletIcon{width:46px;height:46px;flex:0 0 46px;border-radius:15px;background:var(--accent,#19dfbd);color:#05251f;display:grid;place-items:center}.homeEmptyWalletCta>span:last-child{display:flex;flex-direction:column;gap:4px;min-width:0}.homeEmptyWalletCta b{font-size:14px;color:var(--accent,#19dfbd)}.homeEmptyWalletCta small{font-size:11px;line-height:1.35;color:var(--muted,#8da0b3)}.homeEmptyWalletCta:active{transform:scale(.985)}
 
 .homeDayGroup{margin:0 0 14px}
 .homeDayHeader{position:sticky;top:0;z-index:1;padding:7px 2px 6px;margin-bottom:2px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted,#8da0b3);background:var(--background,#07131f)}
