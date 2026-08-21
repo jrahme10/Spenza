@@ -13,5 +13,10 @@ else if(!s.includes(improved)){
  if(!s.includes(anchor))throw new Error('Edit category transform failed: addCategory anchor not found')
  s=s.replace(anchor,`${anchor}\n ${improved}`)
 }
+const remove=`const deleteCategory=(value:string)=>{const target=value.trim();if(!target)return;const isParent=!target.includes(' > ');const matches=(item:string)=>item===target||(isParent&&item.startsWith(target+' > '));const remaining=data.categories.filter(c=>!matches(c));setData(d=>({...d,categories:d.categories.filter(c=>!matches(c))}));setCategory(current=>matches(current)?(remaining[0]||'Other'):current)}`
+if(!s.includes(`const deleteCategory=(value:string)=>`)){
+ if(!s.includes(improved))throw new Error('Delete category transform failed: editCategory anchor not found')
+ s=s.replace(improved,`${improved}\n ${remove}`)
+}
 writeFileSync(path,s)
-console.log('Modernized category handlers with parent/subcategory rename support')
+console.log('Modernized category handlers with add, rename, and delete support')
