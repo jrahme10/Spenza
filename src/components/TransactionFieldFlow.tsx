@@ -47,6 +47,7 @@ export default function TransactionFieldFlow(){
  const [expanded,setExpanded]=useState('')
  const [version,setVersion]=useState(0)
  const accountInputRef=useRef<HTMLInputElement|null>(null)
+ const openedSheetRef=useRef<HTMLElement|null>(null)
 
  useEffect(()=>{
   const refresh=()=>setTargets(findTargets())
@@ -62,10 +63,15 @@ export default function TransactionFieldFlow(){
   targets.accountSelect.dataset.accountPanel='1'
   targets.accountHost.classList.add('spenzaAccountField','spenzaFirstTransactionField')
 
-  // Keep Account as the first form field, directly below the transaction type controls.
-  // The original select remains React-controlled; only its label is repositioned visually.
   const firstField=Array.from(targets.sheet.children).find(el=>el.tagName==='LABEL')
   if(firstField&&firstField!==targets.accountHost)targets.sheet.insertBefore(targets.accountHost,firstField)
+
+  if(openedSheetRef.current!==targets.sheet){
+   openedSheetRef.current=targets.sheet
+   setCategoryOpen(false)
+   setExpanded('')
+   setAccountOpen(true)
+  }
 
   return()=>{
    targets.categorySelect.removeAttribute('data-category-panel')
@@ -102,6 +108,11 @@ export default function TransactionFieldFlow(){
   nativeSetSelect(targets.accountSelect,value)
   setVersion(v=>v+1)
   setAccountOpen(false)
+  const amountInput=targets.sheet.querySelector<HTMLInputElement>('input.amountInput')
+  if(amountInput){
+   amountInput.scrollIntoView({behavior:'smooth',block:'center'})
+   amountInput.focus({preventScroll:true})
+  }
  }
 
  const categoryInput=createPortal(
