@@ -37,15 +37,17 @@ function openAccountPanel(select:HTMLSelectElement,input:HTMLInputElement){
  document.body.appendChild(root)
 }
 
-function prepare(){
- document.querySelectorAll(SHEET).forEach(sheet=>{
-  if(!transactionSheet(sheet))return
-  const select=findAccountSelect(sheet)
-  if(!select||select.dataset.accountPanel==='1')return
+function prepareSheet(sheet:Element){
+ if(!transactionSheet(sheet))return null
+ const select=findAccountSelect(sheet)
+ if(!select)return null
+ let input=sheet.querySelector<HTMLInputElement>('input.spenzaAccountInput')
+ if(!input){
   select.dataset.accountPanel='1'
-  const label=select.closest('label')!
+  const label=select.closest('label')
+  if(!label)return null
   label.classList.add('spenzaAccountField')
-  const input=document.createElement('input')
+  input=document.createElement('input')
   input.type='text'
   input.className='spenzaAccountInput'
   input.readOnly=true
@@ -54,28 +56,38 @@ function prepare(){
   input.setAttribute('aria-label','Select Account')
   syncInput(select,input)
   select.insertAdjacentElement('beforebegin',input)
-  const open=()=>openAccountPanel(select,input)
+  const open=()=>openAccountPanel(select,input!)
   input.addEventListener('click',open)
-  input.addEventListener('focus',()=>{input.blur();open()})
-  select.addEventListener('change',()=>syncInput(select,input))
- })
+  input.addEventListener('focus',()=>{input!.blur();open()})
+  select.addEventListener('change',()=>syncInput(select,input!))
+ }else{
+  select.dataset.accountPanel='1'
+  syncInput(select,input)
+ }
+ return {select,input}
+}
+
+function prepare(){document.querySelectorAll(SHEET).forEach(sheet=>{prepareSheet(sheet)})}
+
+export function openAccountPickerForSheet(sheet:Element){
+ const prepared=prepareSheet(sheet)
+ if(!prepared)return false
+ const {select,input}=prepared
+ input.scrollIntoView({behavior:'smooth',block:'center'})
+ window.requestAnimationFrame(()=>window.requestAnimationFrame(()=>openAccountPanel(select,input)))
+ return true
 }
 
 export function initAccountGrid(){
  new MutationObserver(prepare).observe(document.body,{childList:true,subtree:true});prepare()
  document.addEventListener('spenza-open-account-picker',(event)=>{
-  prepare()
   const detail=(event as CustomEvent).detail||{}
   const requestedInput=detail.input as HTMLInputElement|undefined
   if(requestedInput?.isConnected){
-   const label=requestedInput.closest('label')
-   const select=label?.querySelector<HTMLSelectElement>('select[data-account-panel="1"]')
-   if(select){requestedInput.focus({preventScroll:true});openAccountPanel(select,requestedInput);return}
+   const sheet=requestedInput.closest(SHEET)
+   if(sheet&&openAccountPickerForSheet(sheet))return
   }
   const sheet=(detail.sheet as Element|undefined)||Array.from(document.querySelectorAll(SHEET)).find(transactionSheet)
-  if(!sheet)return
-  const input=sheet.querySelector<HTMLInputElement>('input.spenzaAccountInput')
-  const select=findAccountSelect(sheet)
-  if(input&&select){input.focus({preventScroll:true});input.scrollIntoView({behavior:'smooth',block:'center'});openAccountPanel(select,input)}
+  if(sheet)openAccountPickerForSheet(sheet)
  })
 }
