@@ -1,5 +1,6 @@
 const transactionSheetSelector = '.sheet.refSheet'
 const editableSelector = 'input:not([type="hidden"]):not([type="file"]):not(:disabled), select:not(:disabled), textarea:not(:disabled)'
+let amountPadCleanup:(()=>void)|null=null
 
 function isTransactionSheet(sheet: Element) {
   return sheet.querySelector('h2')?.textContent?.includes('Transaction') ?? false
@@ -41,12 +42,16 @@ function setReactInputValue(input: HTMLInputElement, value: string) {
 }
 
 function openAmountKeypad(input: HTMLInputElement, sheet: Element) {
-  document.querySelector('.spenzaAmountKeypad')?.remove()
+  amountPadCleanup?.()
   input.blur()
   const pad = document.createElement('div')
   pad.className = 'spenzaAmountKeypad'
   pad.innerHTML = `<div class="amountKeypadHandle"></div><div class="amountKeypadDisplay">${input.value || '0'}</div><div class="amountKeypadGrid"><button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button data-key=".">.</button><button data-key="0">0</button><button data-key="back" aria-label="Delete">⌫</button></div><button class="amountKeypadOk">OK</button>`
   document.body.appendChild(pad)
+  const onOutside=(event:PointerEvent)=>{const target=event.target as Node|null;if(!target||pad.contains(target)||input.contains(target))return;closePad()}
+  const closePad=()=>{document.removeEventListener('pointerdown',onOutside,true);if(pad.isConnected)pad.remove();if(amountPadCleanup===closePad)amountPadCleanup=null}
+  amountPadCleanup=closePad
+  window.setTimeout(()=>{if(pad.isConnected)document.addEventListener('pointerdown',onOutside,true)},0)
   const display = pad.querySelector<HTMLElement>('.amountKeypadDisplay')!
   const update = (value: string) => { setReactInputValue(input, value); display.textContent = value || '0' }
   pad.querySelectorAll<HTMLButtonElement>('[data-key]').forEach(button => button.addEventListener('click', () => {
@@ -58,7 +63,7 @@ function openAmountKeypad(input: HTMLInputElement, sheet: Element) {
     update(value)
   }))
   pad.querySelector<HTMLButtonElement>('.amountKeypadOk')?.addEventListener('click', () => {
-    pad.remove()
+    closePad()
     nextAfterAmount(sheet)
   })
 }
@@ -92,6 +97,7 @@ export function initTransactionFormKeyboard() {
 
   const observer = new MutationObserver(() => {
     const sheets = Array.from(document.querySelectorAll(transactionSheetSelector)).filter(isTransactionSheet)
+    if(!sheets.length)amountPadCleanup?.()
     for (const sheet of sheets) {
       if (sheet.getAttribute('data-keyboard-ready') === 'true') continue
       sheet.setAttribute('data-keyboard-ready', 'true')
