@@ -8,25 +8,23 @@ function groups(values:string[]){
  return map
 }
 function setValue(input:HTMLInputElement,value:string){const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')?.set;setter?.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}))}
-function focusNext(sheet:Element,input:HTMLElement){
- const accountInput=sheet.querySelector<HTMLInputElement>('input.spenzaAccountInput')
- if(accountInput){
-  setTimeout(()=>{
+function openAccountNext(sheet:Element){
+ window.setTimeout(()=>{
+  const accountInput=sheet.querySelector<HTMLInputElement>('input.spenzaAccountInput')
+  if(accountInput){
    accountInput.scrollIntoView({behavior:'smooth',block:'center'})
-   accountInput.focus({preventScroll:true})
-  },100)
-  return
- }
- const fields=Array.from(sheet.querySelectorAll<HTMLElement>('input:not([type="hidden"]):not([type="file"]),select,textarea')).filter(x=>x.getClientRects().length&&x!==input)
- const account=fields.find(x=>x.closest('label')?.textContent?.trim().startsWith('Account'))
- if(account){setTimeout(()=>{account.scrollIntoView({behavior:'smooth',block:'center'});account.focus({preventScroll:true})},100)}
+   document.dispatchEvent(new CustomEvent('spenza-open-account-picker',{detail:{input:accountInput}}))
+   return
+  }
+  document.dispatchEvent(new CustomEvent('spenza-open-account-picker',{detail:{sheet}}))
+ },120)
 }
 
 function openPicker(input:HTMLInputElement,sheet:Element,values:string[]){
  document.querySelector('.spenzaCategorySheet')?.remove();input.blur();const all=groups(values)
  const root=document.createElement('div');root.className='spenzaCategorySheet';root.innerHTML='<div class="categorySheetHandle"></div><div class="categorySheetViewport"><div class="categorySheetTrack"><section class="categoryStep categoryMainStep"><div class="categorySheetHead"><span></span><b>Category</b><button class="categoryClose" type="button">×</button></div><div class="categoryOptions categoryMainOptions"></div></section><section class="categoryStep categorySubStep"><div class="categorySheetHead"><button class="categoryBack" type="button">‹ Back</button><b>Subcategory</b><span></span></div><div class="categoryOptions categorySubOptions"></div></section></div></div>';document.body.appendChild(root)
  const track=root.querySelector<HTMLElement>('.categorySheetTrack')!;const mains=root.querySelector<HTMLElement>('.categoryMainOptions')!;const subs=root.querySelector<HTMLElement>('.categorySubOptions')!
- const finish=(value:string)=>{setValue(input,value);root.remove();focusNext(sheet,input)}
+ const finish=(value:string)=>{setValue(input,value);root.remove();openAccountNext(sheet)}
  const showSubs=(main:string,items:string[])=>{subs.innerHTML='';const real=items.filter(x=>x!=='General');for(const name of real){const b=document.createElement('button');b.type='button';b.textContent=name;b.onclick=()=>finish(`${main} > ${name}`);subs.appendChild(b)};track.style.transform='translateX(-50%)'}
  for(const [main,items] of all){const b=document.createElement('button');b.type='button';b.textContent=main;b.onclick=()=>{const real=items.filter(x=>x!=='General');if(real.length)showSubs(main,items);else finish(main)};mains.appendChild(b)}
  root.querySelector<HTMLButtonElement>('.categoryBack')!.onclick=()=>{track.style.transform='translateX(0)'}
