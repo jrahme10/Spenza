@@ -1,3 +1,5 @@
+import { openAccountPickerForSheet } from './accountGrid'
+
 const SHEET='.sheet.refSheet'
 
 function transactionSheet(el:Element){return el.querySelector('h2')?.textContent?.includes('Transaction')??false}
@@ -8,11 +10,9 @@ function syncInput(select:HTMLSelectElement,input:HTMLInputElement){input.value=
 function groups(values:string[]){const map=new Map<string,string[]>();for(const raw of values){const [main,...rest]=raw.split('>').map(v=>v.trim());if(!main)continue;const sub=rest.join(' > ')||'General';const list=map.get(main)||[];if(!list.includes(sub))list.push(sub);map.set(main,list)}return map}
 
 function openAccountNext(sheet:Element){
- window.setTimeout(()=>{
-  const accountInput=sheet.querySelector<HTMLInputElement>('input.spenzaAccountInput')
-  if(accountInput){accountInput.focus({preventScroll:true});accountInput.scrollIntoView({behavior:'smooth',block:'center'});document.dispatchEvent(new CustomEvent('spenza-open-account-picker',{detail:{input:accountInput}}));return}
-  document.dispatchEvent(new CustomEvent('spenza-open-account-picker',{detail:{sheet}}))
- },100)
+ window.requestAnimationFrame(()=>{
+  openAccountPickerForSheet(sheet)
+ })
 }
 
 function openPicker(select:HTMLSelectElement,input:HTMLInputElement,sheet:Element){
