@@ -9,19 +9,19 @@ function setSelectValue(select:HTMLSelectElement,value:string){const setter=Obje
 function syncInput(select:HTMLSelectElement,input:HTMLInputElement){input.value=optionLabel(select.selectedOptions[0])}
 function groups(values:string[]){const map=new Map<string,string[]>();for(const raw of values){const [main,...rest]=raw.split('>').map(v=>v.trim());if(!main)continue;const sub=rest.join(' > ')||'General';const list=map.get(main)||[];if(!list.includes(sub))list.push(sub);map.set(main,list)}return map}
 
-function openAccountNext(sheet:Element){
- window.requestAnimationFrame(()=>{
-  openAccountPickerForSheet(sheet)
- })
-}
-
 function openPicker(select:HTMLSelectElement,input:HTMLInputElement,sheet:Element){
  document.querySelector('.spenzaCategorySheet')?.remove();input.blur()
  const values=Array.from(select.options).filter(o=>o.value).map(o=>o.value)
  const all=groups(values)
  const root=document.createElement('div');root.className='spenzaCategorySheet';root.innerHTML='<div class="categorySheetHandle"></div><div class="categorySheetViewport"><div class="categorySheetTrack"><section class="categoryStep categoryMainStep"><div class="categorySheetHead"><span></span><b>Category</b><button class="categoryClose" type="button">×</button></div><div class="categoryOptions categoryMainOptions"></div></section><section class="categoryStep categorySubStep"><div class="categorySheetHead"><button class="categoryBack" type="button">‹ Back</button><b>Subcategory</b><span></span></div><div class="categoryOptions categorySubOptions"></div></section></div></div>';document.body.appendChild(root)
  const track=root.querySelector<HTMLElement>('.categorySheetTrack')!;const mains=root.querySelector<HTMLElement>('.categoryMainOptions')!;const subs=root.querySelector<HTMLElement>('.categorySubOptions')!
- const finish=(value:string)=>{setSelectValue(select,value);syncInput(select,input);root.remove();openAccountNext(sheet)}
+ const finish=(value:string)=>{
+  setSelectValue(select,value)
+  syncInput(select,input)
+  root.remove()
+  // Open the account sheet immediately while the transaction sheet/select are still available.
+  openAccountPickerForSheet(sheet)
+ }
  const showSubs=(main:string,items:string[])=>{subs.innerHTML='';for(const name of items.filter(x=>x!=='General')){const button=document.createElement('button');button.type='button';button.textContent=name;button.onclick=()=>finish(`${main} > ${name}`);subs.appendChild(button)}track.style.transform='translateX(-50%)'}
  for(const [main,items] of all){const button=document.createElement('button');button.type='button';button.textContent=main;button.classList.toggle('selected',select.value===main||select.value.startsWith(`${main} > `));button.onclick=()=>{const real=items.filter(x=>x!=='General');if(real.length)showSubs(main,items);else finish(main)};mains.appendChild(button)}
  root.querySelector<HTMLButtonElement>('.categoryBack')!.onclick=()=>{track.style.transform='translateX(0)'}
