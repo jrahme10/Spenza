@@ -8,7 +8,19 @@ function groups(values:string[]){
  return map
 }
 function setValue(input:HTMLInputElement,value:string){const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')?.set;setter?.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}))}
-function focusNext(sheet:Element,input:HTMLElement){const fields=Array.from(sheet.querySelectorAll<HTMLElement>('input:not([type="hidden"]):not([type="file"]),select,textarea')).filter(x=>x.getClientRects().length&&x!==input);const account=fields.find(x=>x.closest('label')?.textContent?.trim().startsWith('Account'));if(account){account.focus({preventScroll:true});setTimeout(()=>account.scrollIntoView({behavior:'smooth',block:'center'}),80)}}
+function focusNext(sheet:Element,input:HTMLElement){
+ const accountInput=sheet.querySelector<HTMLInputElement>('input.spenzaAccountInput')
+ if(accountInput){
+  setTimeout(()=>{
+   accountInput.scrollIntoView({behavior:'smooth',block:'center'})
+   accountInput.focus({preventScroll:true})
+  },100)
+  return
+ }
+ const fields=Array.from(sheet.querySelectorAll<HTMLElement>('input:not([type="hidden"]):not([type="file"]),select,textarea')).filter(x=>x.getClientRects().length&&x!==input)
+ const account=fields.find(x=>x.closest('label')?.textContent?.trim().startsWith('Account'))
+ if(account){setTimeout(()=>{account.scrollIntoView({behavior:'smooth',block:'center'});account.focus({preventScroll:true})},100)}
+}
 
 function openPicker(input:HTMLInputElement,sheet:Element,values:string[]){
  document.querySelector('.spenzaCategorySheet')?.remove();input.blur();const all=groups(values)
