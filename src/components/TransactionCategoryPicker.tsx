@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronLeft, ChevronUp, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import './TransactionCategoryPicker.css'
+import './TransactionCategoryDelete.css'
 
 type Props={categories:string[];value:string;disabled?:boolean;onSelect:(value:string)=>void;onAddCategory:(value:string)=>void;onEditCategory:(oldValue:string,newValue:string)=>void;onDeleteCategory:(value:string)=>void;onAdvance:()=>void}
 type EditorState={kind:'category'|'subcategory';mode:'add'|'edit';oldValue?:string;parent:string;name:string}|null
