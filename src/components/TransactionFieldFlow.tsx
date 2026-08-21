@@ -60,11 +60,17 @@ export default function TransactionFieldFlow(){
   if(!targets)return
   targets.categorySelect.dataset.categoryPanel='1'
   targets.accountSelect.dataset.accountPanel='1'
-  targets.accountHost.classList.add('spenzaAccountField')
+  targets.accountHost.classList.add('spenzaAccountField','spenzaFirstTransactionField')
+
+  // Keep Account as the first form field, directly below the transaction type controls.
+  // The original select remains React-controlled; only its label is repositioned visually.
+  const firstField=Array.from(targets.sheet.children).find(el=>el.tagName==='LABEL')
+  if(firstField&&firstField!==targets.accountHost)targets.sheet.insertBefore(targets.accountHost,firstField)
+
   return()=>{
    targets.categorySelect.removeAttribute('data-category-panel')
    targets.accountSelect.removeAttribute('data-account-panel')
-   targets.accountHost.classList.remove('spenzaAccountField')
+   targets.accountHost.classList.remove('spenzaAccountField','spenzaFirstTransactionField')
   }
  },[targets])
 
