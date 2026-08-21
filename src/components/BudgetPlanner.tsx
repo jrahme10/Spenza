@@ -9,7 +9,10 @@ type BudgetPayload=BudgetState&{walletId:string;updatedAt:string}
 const key=(walletId:string)=>`spenza-budget:${walletId}`
 const empty:BudgetState={monthly:0,categories:{}}
 const money=(n:number,c:Currency)=>new Intl.NumberFormat('en-US',{style:'currency',currency:c,maximumFractionDigits:c==='LBP'?0:2}).format(n)
-const normalize=(value:any):BudgetState=>({monthly:Math.max(0,Number(value?.monthly)||0),categories:Object.fromEntries(Object.entries(value?.categories||{}).map(([k,v])=>[k,Math.max(0,Number(v)||0)]).filter(([,v])=>v>0))})
+const normalize=(value:any):BudgetState=>{
+ const entries:Array<[string,number]>=Object.entries(value?.categories||{}).map(([k,v])=>[k,Math.max(0,Number(v)||0)])
+ return {monthly:Math.max(0,Number(value?.monthly)||0),categories:Object.fromEntries(entries.filter(([,v])=>v>0))}
+}
 
 export default function BudgetPlanner({wallet,transactions,categories,date}:Props){
  const [budget,setBudget]=useState<BudgetState>(empty)
@@ -25,7 +28,7 @@ export default function BudgetPlanner({wallet,transactions,categories,date}:Prop
  const pct=budget.monthly?Math.min(100,spent/budget.monthly*100):0
  const categorySpent=(name:string)=>expenses.filter(t=>t.category===name).reduce((sum,t)=>sum+t.amount,0)
  const open=()=>{setMonthly(budget.monthly?String(budget.monthly):'');setCategoryValues(Object.fromEntries(categories.map(c=>[c,budget.categories[c]?String(budget.categories[c]):''])));setEditing(true)}
- const save=async()=>{if(!wallet)return;const next:BudgetState={monthly:Math.max(0,Number(monthly)||0),categories:Object.fromEntries(categories.map(c=>[c,Math.max(0,Number(categoryValues[c])||0)]).filter(([,v])=>Number(v)>0))};localStorage.setItem(key(wallet.id),JSON.stringify(next));setBudget(next);setEditing(false);setSyncLabel('Saved');const supabase=getSupabaseClient();if(!supabase)return;try{const {data:{session}}=await supabase.auth.getSession();if(!session)return;const updatedAt=new Date().toISOString();const payload:BudgetPayload={...next,walletId:wallet.id,updatedAt};const {error}=await supabase.from('spenza_budgets').upsert({owner_id:session.user.id,id:wallet.id,payload,changed_at:updatedAt},{onConflict:'owner_id,id'});if(error)throw error;setSyncLabel('Synced')}catch{setSyncLabel('Saved on device')}}
+ const save=async()=>{if(!wallet)return;const categoryEntries:Array<[string,number]>=categories.map(c=>[c,Math.max(0,Number(categoryValues[c])||0)]);const next:BudgetState={monthly:Math.max(0,Number(monthly)||0),categories:Object.fromEntries(categoryEntries.filter(([,v])=>v>0))};localStorage.setItem(key(wallet.id),JSON.stringify(next));setBudget(next);setEditing(false);setSyncLabel('Saved');const supabase=getSupabaseClient();if(!supabase)return;try{const {data:{session}}=await supabase.auth.getSession();if(!session)return;const updatedAt=new Date().toISOString();const payload:BudgetPayload={...next,walletId:wallet.id,updatedAt};const {error}=await supabase.from('spenza_budgets').upsert({owner_id:session.user.id,id:wallet.id,payload,changed_at:updatedAt},{onConflict:'owner_id,id'});if(error)throw error;setSyncLabel('Synced')}catch{setSyncLabel('Saved on device')}}
  if(!wallet)return null
  return <>
   <section className="budgetCard">
