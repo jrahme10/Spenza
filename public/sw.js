@@ -1,4 +1,4 @@
-const CACHE_NAME='spenza-v5'
+const CACHE_NAME='spenza-v6'
 const APP_SHELL=['./','./manifest.webmanifest','./icon.svg']
 
 self.addEventListener('install',event=>{
