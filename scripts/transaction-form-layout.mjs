@@ -1,0 +1,18 @@
+import {readFileSync,writeFileSync} from 'node:fs'
+const path=new URL('../src/App.tsx',import.meta.url)
+let s=readFileSync(path,'utf8')
+if(!s.includes(`import TransactionCategoryPicker from './components/TransactionCategoryPicker'`))s=s.replace(`import TransactionCalendar from './components/TransactionCalendar'`,`import TransactionCalendar from './components/TransactionCalendar'\nimport TransactionCategoryPicker from './components/TransactionCategoryPicker'`)
+const start=s.indexOf(`{open&&<div className="overlay"`)
+const end=s.indexOf(`\n  {walletForm&&`,start)
+if(start<0||end<0)throw new Error('Transaction form transform failed: form not found')
+const block=s.slice(start,end)
+const amountEnd=block.indexOf(`{conversionLabel&&`)
+const afterConversion=block.indexOf(`<label>Description`,amountEnd)
+const saveStart=block.lastIndexOf(`<button className="primary"`)
+if(amountEnd<0||afterConversion<0||saveStart<0)throw new Error('Transaction form transform failed: anchors not found')
+const prefix=block.slice(0,afterConversion)
+const save=block.slice(saveStart)
+const middle=`<TransactionCategoryPicker categories={data.categories} value={type==='transfer'?'Transfer':category} disabled={type==='transfer'} onSelect={setCategory} onAddCategory={addCategory} onAdvance={()=>{const el=document.querySelector('.transactionAccountSelect') as HTMLSelectElement|null;el?.focus();el?.scrollIntoView({behavior:'smooth',block:'center'})}}/><label>Account<select className="transactionAccountSelect" value={walletId} onChange={e=>setWalletId(e.target.value)}><option value="">Select Account</option>{data.wallets.map(w=><option value={w.id} key={w.id}>{w.name} ({w.currency})</option>)}</select></label>{type==='transfer'&&<label>To Account<select value={toWalletId} onChange={e=>setToWalletId(e.target.value)}><option value="">Select Account</option>{data.wallets.filter(w=>w.id!==walletId).map(w=><option value={w.id} key={w.id}>{w.name} ({w.currency})</option>)}</select></label>}<label>Date<input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label><div className="noteAttachmentLabel">Photos</div><NotePhotoPicker images={noteImages} onChange={setNoteImages}/><label>Description <small className="fieldHint">Optional</small><input value={title} onChange={e=>setTitle(e.target.value)} placeholder={type==='income'?'Salary, refund...':type==='transfer'?'Move money...':'Optional description'}/></label><label>Note <small className="fieldHint">Optional</small><input value={note} onChange={e=>setNote(e.target.value)} placeholder="Add a note (optional)"/></label>`
+s=s.slice(0,start)+prefix+middle+save+s.slice(end)
+writeFileSync(path,s)
+console.log('Applied Add Transaction order and category/subcategory picker')
