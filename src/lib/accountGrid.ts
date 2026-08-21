@@ -1,14 +1,21 @@
 const SHEET='.sheet.refSheet'
 
 function transactionSheet(el:Element){return el.querySelector('h2')?.textContent?.includes('Transaction')??false}
-function findAccountSelect(sheet:Element){return Array.from(sheet.querySelectorAll<HTMLSelectElement>('select')).find(select=>select.closest('label')?.childNodes[0]?.textContent?.trim()==='Account')}
+function findAccountSelect(sheet:Element){
+ const labels=Array.from(sheet.querySelectorAll<HTMLLabelElement>('label'))
+ const accountLabel=labels.find(label=>{
+  const text=label.textContent?.trim()||''
+  return text.startsWith('Account')&&!text.startsWith('Account name')&&!text.startsWith('To Account')&&!!label.querySelector('select')
+ })
+ return accountLabel?.querySelector<HTMLSelectElement>('select')||null
+}
 function setSelectValue(select:HTMLSelectElement,value:string){const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value')?.set;setter?.call(select,value);select.dispatchEvent(new Event('change',{bubbles:true}))}
 function optionLabel(option?:HTMLOptionElement|null){if(!option||!option.value)return '';return option.textContent?.trim()||''}
-function syncInput(select:HTMLSelectElement,input:HTMLInputElement){input.value=optionLabel(select.selectedOptions[0])}
+function syncInput(select:HTMLSelectElement,input?:HTMLInputElement|null){if(input?.isConnected)input.value=optionLabel(select.selectedOptions[0])}
 
-function openAccountPanel(select:HTMLSelectElement,input:HTMLInputElement){
+function openAccountPanel(select:HTMLSelectElement,input?:HTMLInputElement|null){
  document.querySelector('.spenzaAccountSheet')?.remove()
- input.blur()
+ if(input?.isConnected)input.blur()
  const root=document.createElement('div')
  root.className='spenzaAccountSheet'
  const handle=document.createElement('div');handle.className='accountSheetHandle'
@@ -45,7 +52,7 @@ function prepareSheet(sheet:Element){
  if(!input){
   select.dataset.accountPanel='1'
   const label=select.closest('label')
-  if(!label)return null
+  if(!label)return {select,input:null}
   label.classList.add('spenzaAccountField')
   input=document.createElement('input')
   input.type='text'
@@ -56,10 +63,10 @@ function prepareSheet(sheet:Element){
   input.setAttribute('aria-label','Select Account')
   syncInput(select,input)
   select.insertAdjacentElement('beforebegin',input)
-  const open=()=>openAccountPanel(select,input!)
+  const open=()=>openAccountPanel(select,input)
   input.addEventListener('click',open)
-  input.addEventListener('focus',()=>{input!.blur();open()})
-  select.addEventListener('change',()=>syncInput(select,input!))
+  input.addEventListener('focus',()=>{input?.blur();open()})
+  select.addEventListener('change',()=>syncInput(select,input))
  }else{
   select.dataset.accountPanel='1'
   syncInput(select,input)
@@ -70,11 +77,14 @@ function prepareSheet(sheet:Element){
 function prepare(){document.querySelectorAll(SHEET).forEach(sheet=>{prepareSheet(sheet)})}
 
 export function openAccountPickerForSheet(sheet:Element){
+ if(!transactionSheet(sheet))return false
+ const select=findAccountSelect(sheet)
+ if(!select)return false
  const prepared=prepareSheet(sheet)
- if(!prepared)return false
- const {select,input}=prepared
- input.scrollIntoView({behavior:'smooth',block:'center'})
- window.requestAnimationFrame(()=>window.requestAnimationFrame(()=>openAccountPanel(select,input)))
+ const input=prepared?.input||sheet.querySelector<HTMLInputElement>('input.spenzaAccountInput')
+ const anchor=input?.isConnected?input:select.closest('label')||select
+ anchor.scrollIntoView({behavior:'smooth',block:'center'})
+ openAccountPanel(select,input)
  return true
 }
 
