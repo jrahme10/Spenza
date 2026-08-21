@@ -61,4 +61,21 @@ function prepare(){
  })
 }
 
-export function initAccountGrid(){new MutationObserver(prepare).observe(document.body,{childList:true,subtree:true});prepare()}
+export function initAccountGrid(){
+ new MutationObserver(prepare).observe(document.body,{childList:true,subtree:true});prepare()
+ document.addEventListener('spenza-open-account-picker',(event)=>{
+  prepare()
+  const detail=(event as CustomEvent).detail||{}
+  const requestedInput=detail.input as HTMLInputElement|undefined
+  if(requestedInput?.isConnected){
+   const label=requestedInput.closest('label')
+   const select=label?.querySelector<HTMLSelectElement>('select[data-account-panel="1"]')
+   if(select){requestedInput.focus({preventScroll:true});openAccountPanel(select,requestedInput);return}
+  }
+  const sheet=(detail.sheet as Element|undefined)||Array.from(document.querySelectorAll(SHEET)).find(transactionSheet)
+  if(!sheet)return
+  const input=sheet.querySelector<HTMLInputElement>('input.spenzaAccountInput')
+  const select=findAccountSelect(sheet)
+  if(input&&select){input.focus({preventScroll:true});input.scrollIntoView({behavior:'smooth',block:'center'});openAccountPanel(select,input)}
+ })
+}
