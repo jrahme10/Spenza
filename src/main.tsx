@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import SyncStatusPill from './components/SyncStatusPill'
+import PwaUpdateBanner from './components/PwaUpdateBanner'
 import TransactionFieldFlow from './components/TransactionFieldFlow'
 import { initTheme } from './components/ThemeControl'
 import { initDynamicGreeting } from './dynamic-greeting'
@@ -24,8 +25,9 @@ import './note-suggestions.css'
 import './popup-scroll-lock.css'
 import './category-sheet.css'
 import './account-grid.css'
-import './transaction-field-flow.css'
 import './transaction-date-picker.css'
+import './transaction-field-flow.css'
+import './pwa-update.css'
 import { registerPwa } from './lib/pwa'
 import { loadData } from './lib/db'
 import { syncManager } from './lib/syncManager'
@@ -37,5 +39,5 @@ function financialFingerprint(data:Awaited<ReturnType<typeof loadData>>){return 
 function localToday(){const now=new Date();const year=now.getFullYear();const month=String(now.getMonth()+1).padStart(2,'0');const day=String(now.getDate()).padStart(2,'0');return `${year}-${month}-${day}`}
 function resetDateFiltersToToday(){const value=localToday();localStorage.setItem('spenza-home-date',value);localStorage.setItem('spenza-activity-date',value);localStorage.setItem('spenza-insight-date',value)}
 function installAutomaticSync(){let syncTimer:number|undefined;let lastAttemptAt=0;const MIN_SYNC_GAP_MS=3000;const FOREGROUND_REFRESH_MS=30000;const runSync=async()=>{const now=Date.now();if(now-lastAttemptAt<MIN_SYNC_GAP_MS)return;if(typeof navigator!=='undefined'&&!navigator.onLine)return;lastAttemptAt=now;const before=await loadData();const beforeFingerprint=financialFingerprint(before);const result=await syncManager.run();if(result.status==='synced'&&result.data&&beforeFingerprint!==financialFingerprint(result.data))window.location.reload()};const scheduleSync=(delay=250)=>{if(syncTimer)window.clearTimeout(syncTimer);syncTimer=window.setTimeout(()=>{void runSync()},delay)};const onOnline=()=>scheduleSync(250);const onFocus=()=>scheduleSync(150);const onPageShow=()=>scheduleSync(150);const onVisibility=()=>{if(document.visibilityState==='visible')scheduleSync(150)};const onResume=()=>scheduleSync(150);window.addEventListener('online',onOnline);window.addEventListener('focus',onFocus);window.addEventListener('pageshow',onPageShow);window.addEventListener('resume',onResume);document.addEventListener('visibilitychange',onVisibility);scheduleSync(800);window.setInterval(()=>{if(document.visibilityState==='visible')void runSync()},FOREGROUND_REFRESH_MS)}
-function bootstrap(){resetDateFiltersToToday();initTheme();ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App/><TransactionFieldFlow/><SyncStatusPill/></React.StrictMode>);installAutomaticSync();initDynamicGreeting();initNoteSuggestions();initTransactionFormKeyboard();initTransactionDatePicker();registerPwa()}
+function bootstrap(){resetDateFiltersToToday();initTheme();ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App/><TransactionFieldFlow/><SyncStatusPill/><PwaUpdateBanner/></React.StrictMode>);installAutomaticSync();initDynamicGreeting();initNoteSuggestions();initTransactionFormKeyboard();initTransactionDatePicker();registerPwa()}
 bootstrap()
