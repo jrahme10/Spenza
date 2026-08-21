@@ -1,50 +1,8 @@
-const CACHE_NAME='spenza-v21'
+const CACHE_NAME='spenza-v22'
 const APP_SHELL=['./','./manifest.webmanifest','./icon.svg']
-
-self.addEventListener('install',event=>{
-  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()))
-})
-
-self.addEventListener('activate',event=>{
-  event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE_NAME).map(key=>caches.delete(key)))).then(()=>self.clients.claim()))
-})
-
-self.addEventListener('message',event=>{
-  if(event.data?.type==='SKIP_WAITING')self.skipWaiting()
-})
-
-self.addEventListener('fetch',event=>{
-  const request=event.request
-  if(request.method!=='GET')return
-
-  // Always prefer the deployed version for page navigations and built app assets.
-  if(request.mode==='navigate'){
-    event.respondWith(fetch(request,{cache:'no-store'}).then(response=>{
-      const copy=response.clone()
-      caches.open(CACHE_NAME).then(cache=>cache.put('./',copy))
-      return response
-    }).catch(()=>caches.match('./')))
-    return
-  }
-
-  const url=new URL(request.url)
-  const isAppAsset=url.origin===self.location.origin&&(url.pathname.includes('/assets/')||url.pathname.endsWith('.js')||url.pathname.endsWith('.css'))
-  if(isAppAsset){
-    event.respondWith(fetch(request,{cache:'no-store'}).then(response=>{
-      if(response&&response.status===200){const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(request,copy))}
-      return response
-    }).catch(()=>caches.match(request)))
-    return
-  }
-
-  event.respondWith(caches.match(request).then(cached=>{
-    const network=fetch(request).then(response=>{
-      if(response&&response.status===200&&response.type!=='opaque'){const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(request,copy))}
-      return response
-    }).catch(()=>cached)
-    return cached||network
-  }))
-})
-
+self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()))})
+self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE_NAME).map(key=>caches.delete(key)))).then(()=>self.clients.claim()))})
+self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting()})
+self.addEventListener('fetch',event=>{const request=event.request;if(request.method!=='GET')return;if(request.mode==='navigate'){event.respondWith(fetch(request,{cache:'no-store'}).then(response=>{const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put('./',copy));return response}).catch(()=>caches.match('./')));return}const url=new URL(request.url);const isAppAsset=url.origin===self.location.origin&&(url.pathname.includes('/assets/')||url.pathname.endsWith('.js')||url.pathname.endsWith('.css'));if(isAppAsset){event.respondWith(fetch(request,{cache:'no-store'}).then(response=>{if(response&&response.status===200){const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(request,copy))}return response}).catch(()=>caches.match(request)));return}event.respondWith(caches.match(request).then(cached=>{const network=fetch(request).then(response=>{if(response&&response.status===200&&response.type!=='opaque'){const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(request,copy))}return response}).catch(()=>cached);return cached||network}))})
 self.addEventListener('push',event=>{let data={};try{data=event.data?.json()||{}}catch{data={body:event.data?.text()||''}}const title=data.title||'Bill reminder';const options={body:data.body||'You have a bill coming due.',icon:'./icon.svg',badge:'./icon.svg',tag:data.tag||'spenza-bill-reminder',renotify:false,data:{url:data.url||'./?open=bills',billId:data.billId||null}};event.waitUntil(self.registration.showNotification(title,options))})
 self.addEventListener('notificationclick',event=>{event.notification.close();const target=new URL(event.notification.data?.url||'./?open=bills',self.registration.scope).href;event.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(clients=>{for(const client of clients){if('focus'in client){if('navigate'in client)client.navigate(target);return client.focus()}}return self.clients.openWindow?self.clients.openWindow(target):undefined}))})
