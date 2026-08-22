@@ -1,3 +1,5 @@
+import { clearPwaUpdateAvailable, setPwaUpdateAvailable } from './pwaUpdate'
+
 export function registerPwa() {
   if (!('serviceWorker' in navigator)) return
 
@@ -10,17 +12,16 @@ export function registerPwa() {
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (refreshing) return
         refreshing = true
+        clearPwaUpdateAvailable()
         window.location.reload()
       })
 
       const announceUpdate = (worker: ServiceWorker) => {
         if (promptedWorker === worker) return
         promptedWorker = worker
-        window.dispatchEvent(new CustomEvent('spenza-pwa-update-available', {
-          detail: {
-            apply: () => worker.postMessage({ type: 'SKIP_WAITING' })
-          }
-        }))
+        const apply = () => worker.postMessage({ type: 'SKIP_WAITING' })
+        setPwaUpdateAvailable({ apply })
+        window.dispatchEvent(new CustomEvent('spenza-pwa-update-available', { detail: { apply } }))
       }
 
       if (registration.waiting && navigator.serviceWorker.controller) announceUpdate(registration.waiting)
@@ -33,8 +34,6 @@ export function registerPwa() {
         })
       })
 
-      // Check immediately whenever the app is opened, periodically while open,
-      // and whenever it returns to the foreground.
       await registration.update().catch(() => undefined)
       const checkForUpdate = () => registration.update().catch(() => undefined)
       window.setInterval(checkForUpdate, 5 * 60 * 1000)
