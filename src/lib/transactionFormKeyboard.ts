@@ -103,8 +103,6 @@ function openAmountKeypad(input: HTMLInputElement, sheet: Element) {
     const next=button.dataset.currency as Currency
     if(next===entryCurrency)return
     entryCurrency=next
-    draftValue=''
-    setReactInputValue(input,'')
     syncCurrencyButtons()
     showPreview()
   }))
