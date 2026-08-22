@@ -16,6 +16,20 @@ function visibleEditableFields(sheet: Element) {
   })
 }
 
+function allVisibleFields(sheet: Element) {
+  return Array.from(sheet.querySelectorAll<HTMLElement>(editableSelector)).filter(field => {
+    const style = window.getComputedStyle(field)
+    return style.display !== 'none' && style.visibility !== 'hidden' && field.getClientRects().length > 0
+  })
+}
+
+function isEmptyField(field: HTMLElement) {
+  if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
+    return field.value.trim() === ''
+  }
+  return false
+}
+
 function revealField(field: HTMLElement) {
   window.setTimeout(() => field.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' }), 100)
 }
@@ -26,16 +40,9 @@ function focusAndReveal(field: HTMLElement, selectValue = false) {
   revealField(field)
 }
 
-function nextAfterAmount(sheet: Element) {
-  const amount = sheet.querySelector<HTMLInputElement>('input.amountInput')
-  if (!amount) return
-  const all = Array.from(sheet.querySelectorAll<HTMLElement>(editableSelector)).filter(field => {
-    const style = window.getComputedStyle(field)
-    return style.display !== 'none' && style.visibility !== 'hidden' && field.getClientRects().length > 0
-  })
-  const index = all.indexOf(amount)
-  const next = all.slice(index + 1).find(field => !field.classList.contains('amountInput'))
-  if (next) focusAndReveal(next)
+function focusFirstEmpty(sheet: Element) {
+  const empty = allVisibleFields(sheet).find(isEmptyField)
+  if (empty) focusAndReveal(empty)
 }
 
 function setReactInputValue(input: HTMLInputElement, value: string) {
@@ -150,7 +157,7 @@ function openAmountKeypad(input: HTMLInputElement, sheet: Element) {
   pad.querySelector<HTMLButtonElement>('.amountKeypadOk')?.addEventListener('click', () => {
     if(calculate(true)===null)return
     closePad()
-    nextAfterAmount(sheet)
+    focusFirstEmpty(sheet)
   })
   syncCurrencyButtons()
   showPreview()
@@ -179,6 +186,17 @@ function prepareAmount(sheet: Element) {
   const select=accountSelect(sheet)
   select?.addEventListener('change',()=>window.setTimeout(syncAccountAmount,0))
 
+  sheet.addEventListener('change',event=>{
+    const target=event.target
+    if(target instanceof HTMLSelectElement){
+      if(target.value.trim())window.setTimeout(()=>focusFirstEmpty(sheet),0)
+      return
+    }
+    if(target instanceof HTMLInputElement&&target.type==='date'&&target.value.trim()){
+      window.setTimeout(()=>focusFirstEmpty(sheet),0)
+    }
+  })
+
   amount.addEventListener('click', () => openAmountKeypad(amount, sheet))
   amount.addEventListener('focus', () => openAmountKeypad(amount, sheet))
   window.setTimeout(() => { syncAccountAmount(); amount.focus({ preventScroll: true }); revealField(amount) }, 80)
@@ -192,13 +210,11 @@ export function initTransactionFormKeyboard() {
     if (!(target instanceof HTMLElement) || target instanceof HTMLTextAreaElement) return
     const sheet = target.closest(transactionSheetSelector)
     if (!sheet || !isTransactionSheet(sheet) || target.classList.contains('amountInput')) return
-    const fields = visibleEditableFields(sheet)
-    const index = fields.indexOf(target)
-    if (index < 0) return
+    if(target instanceof HTMLInputElement||target instanceof HTMLSelectElement){
+      if(!target.value.trim())return
+    }
     event.preventDefault()
-    const next = fields[index + 1]
-    if (next) focusAndReveal(next)
-    else Array.from(sheet.querySelectorAll<HTMLButtonElement>('button.primary')).find(button => !button.disabled)?.click()
+    focusFirstEmpty(sheet)
   })
 
   const observer = new MutationObserver(() => {
