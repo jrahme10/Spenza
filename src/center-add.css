@@ -1,5 +1,5 @@
 /* Bottom navigation: two tabs on each side with the + occupying the exact center slot. */
-.reference-layout nav{position:fixed!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;align-items:center!important;justify-items:center!important;column-gap:0!important;min-height:64px!important;height:64px!important;padding:3px 4px calc(3px + env(safe-area-inset-bottom))!important;box-sizing:content-box!important;overflow:visible!important}
+.reference-layout nav{position:fixed!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;align-items:center!important;justify-items:center!important;column-gap:0!important;min-height:64px!important;height:64px!important;padding:3px 4px!important;box-sizing:content-box!important;overflow:visible!important}
 .reference-layout nav button{margin:0!important}
 .reference-layout nav button:not(.addNav){width:100%!important;max-width:none!important;min-width:0!important;min-height:48px!important;padding:2px 1px!important;justify-self:stretch!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important;gap:2px!important}
 /* Home | Bills | + | Insights | Settings */
