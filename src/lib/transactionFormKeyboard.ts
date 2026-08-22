@@ -1,6 +1,9 @@
+import { loadData, Currency } from './db'
+
 const transactionSheetSelector = '.sheet.refSheet'
 const editableSelector = 'input:not([type="hidden"]):not([type="file"]):not(:disabled), select:not(:disabled), textarea:not(:disabled)'
 let amountPadCleanup:(()=>void)|null=null
+let usdToLbpRate=89500
 
 function isTransactionSheet(sheet: Element) {
   return sheet.querySelector('h2')?.textContent?.includes('Transaction') ?? false
@@ -41,6 +44,23 @@ function setReactInputValue(input: HTMLInputElement, value: string) {
   input.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
+function accountCurrency(sheet:Element):Currency{
+  const accountLabel=Array.from(sheet.querySelectorAll('label')).find(label=>label.textContent?.trim().startsWith('Account'))
+  const select=accountLabel?.querySelector<HTMLSelectElement>('select')
+  const text=select?.selectedOptions[0]?.textContent||''
+  return /\bLBP\b/i.test(text)?'LBP':'USD'
+}
+
+function convertAmount(value:number,from:Currency,to:Currency){
+  if(from===to)return to==='LBP'?Math.round(value):Math.round(value*100)/100
+  const converted=from==='USD'?value*usdToLbpRate:value/usdToLbpRate
+  return to==='LBP'?Math.round(converted):Math.round(converted*100)/100
+}
+
+function formatAmount(value:number,currency:Currency){
+  return currency==='LBP'?`${Math.round(value).toLocaleString()} LBP`:`$${value.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2})}`
+}
+
 function evaluateAmountExpression(source:string):number|null {
   const text=source.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/\s+/g,'')
   if(!text||!/^[0-9.+\-*/()]+$/.test(text))return null
@@ -57,10 +77,12 @@ function evaluateAmountExpression(source:string):number|null {
 function openAmountKeypad(input: HTMLInputElement, sheet: Element) {
   amountPadCleanup?.()
   input.blur()
+  const walletCurrency=accountCurrency(sheet)
+  let entryCurrency:Currency=walletCurrency
   let draftValue = input.value || ''
   const pad = document.createElement('div')
   pad.className = 'spenzaAmountKeypad'
-  pad.innerHTML = `<div class="amountKeypadHandle"></div><div class="amountKeypadDisplay"><span class="amountExpression">${draftValue || '0'}</span><small class="amountEquationResult"></small></div><div class="amountKeypadGrid"><button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button data-key="/" class="amountOperator">÷</button><button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button data-key="*" class="amountOperator">×</button><button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="-" class="amountOperator">−</button><button data-key=".">.</button><button data-key="0">0</button><button data-key="back" aria-label="Delete">⌫</button><button data-key="+" class="amountOperator">+</button><button data-key="(" class="amountOperator">(</button><button data-key=")" class="amountOperator">)</button><button data-key="clear" class="amountOperator">C</button><button data-key="equals" class="amountEquals">=</button></div><button class="amountKeypadOk">Use Amount</button>`
+  pad.innerHTML = `<div class="amountKeypadHandle"></div><div class="amountCurrencyRow"><span>Enter amount in</span><div class="amountCurrencyToggle"><button type="button" data-currency="USD">USD $</button><button type="button" data-currency="LBP">LBP</button></div></div><div class="amountKeypadDisplay"><span class="amountExpression">${draftValue || '0'}</span><small class="amountEquationResult"></small><small class="amountCurrencyConversion"></small></div><div class="amountKeypadGrid"><button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button data-key="/" class="amountOperator">÷</button><button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button data-key="*" class="amountOperator">×</button><button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="-" class="amountOperator">−</button><button data-key=".">.</button><button data-key="0">0</button><button data-key="back" aria-label="Delete">⌫</button><button data-key="+" class="amountOperator">+</button><button data-key="(" class="amountOperator">(</button><button data-key=")" class="amountOperator">)</button><button data-key="clear" class="amountOperator">C</button><button data-key="equals" class="amountEquals">=</button></div><button class="amountKeypadOk">Use Amount</button>`
   document.body.appendChild(pad)
   const onOutside=(event:PointerEvent)=>{const target=event.target as Node|null;if(!target||pad.contains(target)||input.contains(target))return;closePad()}
   const closePad=()=>{document.removeEventListener('pointerdown',onOutside,true);if(pad.isConnected)pad.remove();if(amountPadCleanup===closePad)amountPadCleanup=null}
@@ -68,29 +90,43 @@ function openAmountKeypad(input: HTMLInputElement, sheet: Element) {
   window.setTimeout(()=>{if(pad.isConnected)document.addEventListener('pointerdown',onOutside,true)},0)
   const expressionEl = pad.querySelector<HTMLElement>('.amountExpression')!
   const resultEl = pad.querySelector<HTMLElement>('.amountEquationResult')!
+  const conversionEl = pad.querySelector<HTMLElement>('.amountCurrencyConversion')!
+  const currencyButtons=Array.from(pad.querySelectorAll<HTMLButtonElement>('[data-currency]'))
+  const syncCurrencyButtons=()=>currencyButtons.forEach(button=>button.classList.toggle('selected',button.dataset.currency===entryCurrency))
   const showPreview=()=>{
     expressionEl.textContent=draftValue||'0'
     const hasOperator=/[+\-*/()]/.test(draftValue.slice(1))||/[*/()]/.test(draftValue)
-    const result=hasOperator?evaluateAmountExpression(draftValue):null
-    resultEl.textContent=result===null?'':`= ${result}`
+    const result=evaluateAmountExpression(draftValue)
+    resultEl.textContent=hasOperator&&result!==null?`= ${formatAmount(result,entryCurrency)}`:''
     resultEl.classList.remove('error')
+    if(result!==null&&entryCurrency!==walletCurrency){const converted=convertAmount(result,entryCurrency,walletCurrency);conversionEl.textContent=`Saved as ${formatAmount(converted,walletCurrency)} · 1 USD = ${usdToLbpRate.toLocaleString()} LBP`}
+    else conversionEl.textContent=walletCurrency===entryCurrency?`Account currency: ${walletCurrency}`:''
   }
-  const calculate=()=>{
+  const calculate=(commitToInput=true)=>{
     const result=evaluateAmountExpression(draftValue)
     if(result===null){resultEl.textContent='Invalid equation';resultEl.classList.add('error');return null}
     draftValue=String(result)
-    setReactInputValue(input,draftValue)
+    if(commitToInput){const converted=convertAmount(result,entryCurrency,walletCurrency);setReactInputValue(input,String(converted))}
     showPreview()
     return result
   }
+  currencyButtons.forEach(button=>button.addEventListener('click',()=>{
+    const next=button.dataset.currency as Currency
+    if(next===entryCurrency)return
+    entryCurrency=next
+    draftValue=''
+    setReactInputValue(input,'')
+    syncCurrencyButtons()
+    showPreview()
+  }))
   pad.querySelectorAll<HTMLButtonElement>('[data-key]').forEach(button => button.addEventListener('click', () => {
     const key = button.dataset.key || ''
-    if(key==='equals'){calculate();return}
+    if(key==='equals'){calculate(false);return}
     if(key==='clear'){draftValue='';setReactInputValue(input,'');showPreview();return}
     if(key==='back'){draftValue=draftValue.slice(0,-1);showPreview();return}
     if(key==='.'){
       const current=draftValue.split(/[+\-*/()]/).pop()||''
-      if(!current.includes('.'))draftValue+=current?' .'.trim(): '0.'
+      if(!current.includes('.'))draftValue+=current?'.':'0.'
       showPreview();return
     }
     if(/[+\-*/]/.test(key)){
@@ -104,10 +140,11 @@ function openAmountKeypad(input: HTMLInputElement, sheet: Element) {
     showPreview()
   }))
   pad.querySelector<HTMLButtonElement>('.amountKeypadOk')?.addEventListener('click', () => {
-    if(calculate()===null)return
+    if(calculate(true)===null)return
     closePad()
     nextAfterAmount(sheet)
   })
+  syncCurrencyButtons()
   showPreview()
 }
 
@@ -123,6 +160,7 @@ function prepareAmount(sheet: Element) {
 }
 
 export function initTransactionFormKeyboard() {
+  void loadData().then(data=>{usdToLbpRate=data.usdToLbpRate||89500}).catch(()=>{})
   document.addEventListener('keydown', event => {
     if (event.key !== 'Enter' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return
     const target = event.target
