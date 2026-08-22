@@ -1,4 +1,4 @@
 /* Remove the artificial blank area between page content and the bottom navigation. */
 .reference-layout{padding-bottom:10px!important}
 .reference-layout .page,.reference-layout .homeScreen{min-height:auto!important}
-.reference-layout nav{position:static!important;left:auto!important;right:auto!important;bottom:auto!important;width:calc(100% + 32px)!important;margin:10px -16px 0!important}
+.reference-layout nav{position:static!important;left:auto!important;right:auto!important;bottom:auto!important;transform:none!important;width:100%!important;max-width:none!important;margin:10px auto 0!important;box-sizing:border-box!important}
