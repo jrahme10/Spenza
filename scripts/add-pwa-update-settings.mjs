@@ -10,7 +10,7 @@ if(!s.includes(imp)){
 if(!s.includes('<PwaUpdateSettings/>')){
  const anchor=`<h3 className="settingsGroupTitle">Security</h3>`
  if(!s.includes(anchor))throw new Error('PWA update settings transform: Settings anchor missing')
- s=s.replace(anchor,`<h3 className="settingsGroupTitle pwaUpdateSettingsTitle">App Update</h3><PwaUpdateSettings/>${anchor}`)
+ s=s.replace(anchor,`<PwaUpdateSettings/>${anchor}`)
 }
 writeFileSync(path,s)
 console.log('Added conditional PWA update section to Settings')
