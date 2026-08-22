@@ -31,7 +31,14 @@ function isEmptyField(field: HTMLElement) {
 }
 
 function revealField(field: HTMLElement) {
-  window.setTimeout(() => field.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' }), 100)
+  const scroll=()=>{
+    if(!field.isConnected)return
+    field.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+  }
+  requestAnimationFrame(scroll)
+  window.setTimeout(scroll,120)
+  window.setTimeout(scroll,320)
+  window.setTimeout(scroll,560)
 }
 
 function focusAndReveal(field: HTMLElement, selectValue = false) {
@@ -185,6 +192,13 @@ function prepareAmount(sheet: Element) {
   syncAccountAmount()
   const select=accountSelect(sheet)
   select?.addEventListener('change',()=>window.setTimeout(syncAccountAmount,0))
+
+  sheet.addEventListener('focusin',event=>{
+    const target=event.target
+    if(target instanceof HTMLInputElement||target instanceof HTMLSelectElement||target instanceof HTMLTextAreaElement){
+      revealField(target)
+    }
+  })
 
   sheet.addEventListener('change',event=>{
     const target=event.target
