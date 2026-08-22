@@ -1,33 +1,11 @@
 import { loadData, Currency } from './db'
 
 const transactionSheetSelector = '.sheet.refSheet'
-const editableSelector = 'input:not([type="hidden"]):not([type="file"]):not(:disabled), select:not(:disabled), textarea:not(:disabled)'
 let amountPadCleanup:(()=>void)|null=null
 let usdToLbpRate=89500
 
 function isTransactionSheet(sheet: Element) {
   return sheet.querySelector('h2')?.textContent?.includes('Transaction') ?? false
-}
-
-function visibleEditableFields(sheet: Element) {
-  return Array.from(sheet.querySelectorAll<HTMLElement>(editableSelector)).filter(field => {
-    const style = window.getComputedStyle(field)
-    return style.display !== 'none' && style.visibility !== 'hidden' && field.getClientRects().length > 0 && !field.classList.contains('amountInput')
-  })
-}
-
-function allVisibleFields(sheet: Element) {
-  return Array.from(sheet.querySelectorAll<HTMLElement>(editableSelector)).filter(field => {
-    const style = window.getComputedStyle(field)
-    return style.display !== 'none' && style.visibility !== 'hidden' && field.getClientRects().length > 0
-  })
-}
-
-function isEmptyField(field: HTMLElement) {
-  if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
-    return field.value.trim() === ''
-  }
-  return false
 }
 
 function revealField(field: HTMLElement) {
@@ -39,17 +17,6 @@ function revealField(field: HTMLElement) {
   window.setTimeout(scroll,120)
   window.setTimeout(scroll,320)
   window.setTimeout(scroll,560)
-}
-
-function focusAndReveal(field: HTMLElement, selectValue = false) {
-  field.focus({ preventScroll: true })
-  if (selectValue && field instanceof HTMLInputElement) field.select()
-  revealField(field)
-}
-
-function focusFirstEmpty(sheet: Element) {
-  const empty = allVisibleFields(sheet).find(isEmptyField)
-  if (empty) focusAndReveal(empty)
 }
 
 function setReactInputValue(input: HTMLInputElement, value: string) {
@@ -164,7 +131,6 @@ function openAmountKeypad(input: HTMLInputElement, sheet: Element) {
   pad.querySelector<HTMLButtonElement>('.amountKeypadOk')?.addEventListener('click', () => {
     if(calculate(true)===null)return
     closePad()
-    focusFirstEmpty(sheet)
   })
   syncCurrencyButtons()
   showPreview()
@@ -200,17 +166,6 @@ function prepareAmount(sheet: Element) {
     }
   })
 
-  sheet.addEventListener('change',event=>{
-    const target=event.target
-    if(target instanceof HTMLSelectElement){
-      if(target.value.trim())window.setTimeout(()=>focusFirstEmpty(sheet),0)
-      return
-    }
-    if(target instanceof HTMLInputElement&&target.type==='date'&&target.value.trim()){
-      window.setTimeout(()=>focusFirstEmpty(sheet),0)
-    }
-  })
-
   amount.addEventListener('click', () => openAmountKeypad(amount, sheet))
   amount.addEventListener('focus', () => openAmountKeypad(amount, sheet))
   window.setTimeout(() => { syncAccountAmount(); amount.focus({ preventScroll: true }); revealField(amount) }, 80)
@@ -218,18 +173,6 @@ function prepareAmount(sheet: Element) {
 
 export function initTransactionFormKeyboard() {
   void loadData().then(data=>{usdToLbpRate=data.usdToLbpRate||89500}).catch(()=>{})
-  document.addEventListener('keydown', event => {
-    if (event.key !== 'Enter' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return
-    const target = event.target
-    if (!(target instanceof HTMLElement) || target instanceof HTMLTextAreaElement) return
-    const sheet = target.closest(transactionSheetSelector)
-    if (!sheet || !isTransactionSheet(sheet) || target.classList.contains('amountInput')) return
-    if(target instanceof HTMLInputElement||target instanceof HTMLSelectElement){
-      if(!target.value.trim())return
-    }
-    event.preventDefault()
-    focusFirstEmpty(sheet)
-  })
 
   const observer = new MutationObserver(() => {
     const sheets = Array.from(document.querySelectorAll(transactionSheetSelector)).filter(isTransactionSheet)
