@@ -44,25 +44,34 @@ function setReactInputValue(input: HTMLInputElement, value: string) {
 function openAmountKeypad(input: HTMLInputElement, sheet: Element) {
   amountPadCleanup?.()
   input.blur()
+  let draftValue = input.value || ''
   const pad = document.createElement('div')
   pad.className = 'spenzaAmountKeypad'
-  pad.innerHTML = `<div class="amountKeypadHandle"></div><div class="amountKeypadDisplay">${input.value || '0'}</div><div class="amountKeypadGrid"><button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button data-key=".">.</button><button data-key="0">0</button><button data-key="back" aria-label="Delete">⌫</button></div><button class="amountKeypadOk">OK</button>`
+  pad.innerHTML = `<div class="amountKeypadHandle"></div><div class="amountKeypadDisplay">${draftValue || '0'}</div><div class="amountKeypadGrid"><button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button data-key=".">.</button><button data-key="0">0</button><button data-key="back" aria-label="Delete">⌫</button></div><button class="amountKeypadOk">OK</button>`
   document.body.appendChild(pad)
   const onOutside=(event:PointerEvent)=>{const target=event.target as Node|null;if(!target||pad.contains(target)||input.contains(target))return;closePad()}
   const closePad=()=>{document.removeEventListener('pointerdown',onOutside,true);if(pad.isConnected)pad.remove();if(amountPadCleanup===closePad)amountPadCleanup=null}
   amountPadCleanup=closePad
   window.setTimeout(()=>{if(pad.isConnected)document.addEventListener('pointerdown',onOutside,true)},0)
   const display = pad.querySelector<HTMLElement>('.amountKeypadDisplay')!
-  const update = (value: string) => { setReactInputValue(input, value); display.textContent = value || '0' }
+  const commitDraft = () => {
+    const normalized = draftValue.endsWith('.') ? draftValue.slice(0, -1) : draftValue
+    setReactInputValue(input, normalized)
+  }
+  const updateDisplay = () => { display.textContent = draftValue || '0' }
   pad.querySelectorAll<HTMLButtonElement>('[data-key]').forEach(button => button.addEventListener('click', () => {
     const key = button.dataset.key || ''
-    let value = input.value
-    if (key === 'back') value = value.slice(0, -1)
-    else if (key === '.') { if (!value.includes('.')) value = value ? value + '.' : '0.' }
-    else value = value === '0' ? key : value + key
-    update(value)
+    if (key === 'back') draftValue = draftValue.slice(0, -1)
+    else if (key === '.') {
+      if (!draftValue.includes('.')) draftValue = draftValue ? `${draftValue}.` : '0.'
+    } else draftValue = draftValue === '0' ? key : draftValue + key
+
+    updateDisplay()
+    if (!draftValue.endsWith('.')) commitDraft()
+    else if (!draftValue) setReactInputValue(input, '')
   }))
   pad.querySelector<HTMLButtonElement>('.amountKeypadOk')?.addEventListener('click', () => {
+    commitDraft()
     closePad()
     nextAfterAmount(sheet)
   })
