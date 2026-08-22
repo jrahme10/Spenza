@@ -44,11 +44,19 @@ function setReactInputValue(input: HTMLInputElement, value: string) {
   input.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
-function accountCurrency(sheet:Element):Currency{
+function accountSelect(sheet:Element){
   const accountLabel=Array.from(sheet.querySelectorAll('label')).find(label=>label.textContent?.trim().startsWith('Account'))
-  const select=accountLabel?.querySelector<HTMLSelectElement>('select')
+  return accountLabel?.querySelector<HTMLSelectElement>('select')||null
+}
+
+function accountCurrency(sheet:Element):Currency{
+  const select=accountSelect(sheet)
   const text=select?.selectedOptions[0]?.textContent||''
   return /\bLBP\b/i.test(text)?'LBP':'USD'
+}
+
+function amountPlaceholder(currency:Currency){
+  return currency==='LBP'?'LBP 0':'$ 0.00'
 }
 
 function convertAmount(value:number,from:Currency,to:Currency){
@@ -154,9 +162,26 @@ function prepareAmount(sheet: Element) {
   amount.dataset.customKeypad = 'true'
   amount.setAttribute('inputmode', 'none')
   amount.setAttribute('readonly', 'true')
+
+  let currentCurrency=accountCurrency(sheet)
+  const syncAccountAmount=()=>{
+    const nextCurrency=accountCurrency(sheet)
+    amount.placeholder=amountPlaceholder(nextCurrency)
+    if(nextCurrency!==currentCurrency){
+      const currentAmount=Number(amount.value)
+      if(amount.value.trim()!==''&&Number.isFinite(currentAmount)){
+        setReactInputValue(amount,String(convertAmount(currentAmount,currentCurrency,nextCurrency)))
+      }
+      currentCurrency=nextCurrency
+    }
+  }
+  syncAccountAmount()
+  const select=accountSelect(sheet)
+  select?.addEventListener('change',()=>window.setTimeout(syncAccountAmount,0))
+
   amount.addEventListener('click', () => openAmountKeypad(amount, sheet))
   amount.addEventListener('focus', () => openAmountKeypad(amount, sheet))
-  window.setTimeout(() => { amount.focus({ preventScroll: true }); revealField(amount) }, 80)
+  window.setTimeout(() => { syncAccountAmount(); amount.focus({ preventScroll: true }); revealField(amount) }, 80)
 }
 
 export function initTransactionFormKeyboard() {
