@@ -3,7 +3,7 @@ import { ChevronDown, ChevronLeft, ChevronUp, Pencil, Plus, Search, Trash2, X } 
 import './TransactionCategoryPicker.css'
 import './TransactionCategoryDelete.css'
 
-type Props={categories:string[];value:string;disabled?:boolean;onSelect:(value:string)=>void;onAddCategory:(value:string)=>void;onEditCategory:(oldValue:string,newValue:string)=>void;onDeleteCategory:(value:string)=>void;onAdvance:()=>void}
+type Props={categories:string[];value:string;disabled?:boolean;onSelect:(value:string)=>void;onAddCategory:(value:string)=>void;onEditCategory:(oldValue:string,newValue:string)=>void;onDeleteCategory:(value:string)=>void;onAdvance?:()=>void}
 type EditorState={kind:'category'|'subcategory';mode:'add'|'edit';oldValue?:string;parent:string;name:string}|null
 const splitCategory=(value:string)=>{const parts=value.split(' > ').map(v=>v.trim()).filter(Boolean);return {parent:parts[0]||value,child:parts.slice(1).join(' > ')}}
 
@@ -20,7 +20,7 @@ export default function TransactionCategoryPicker({categories,value,disabled,onS
  const directFor=(parent:string)=>parsed.find(x=>x.parent===parent&&!x.child)
  const selected=splitCategory(value)
  const filteredParents=useMemo(()=>{const q=search.trim().toLowerCase();if(!q)return parents;return parents.filter(parent=>parent.toLowerCase().includes(q)||childrenFor(parent).some(item=>item.child.toLowerCase().includes(q)))},[search,parents,parsed])
- const finish=(next:string)=>{onSelect(next);setOpen(false);setExpanded('');window.setTimeout(onAdvance,80)}
+ const finish=(next:string)=>{onSelect(next);setOpen(false);setExpanded('');if(onAdvance)window.setTimeout(onAdvance,80)}
  const chooseParent=(parent:string)=>{const children=childrenFor(parent);if(children.length){setExpanded(v=>v===parent?'':parent);return}finish(directFor(parent)?.raw||parent)}
  const close=()=>{setOpen(false);setExpanded('')}
  const openPanel=()=>{if(disabled)return;setExpanded(selected.child?selected.parent:'');setOpen(true)}
@@ -29,7 +29,7 @@ export default function TransactionCategoryPicker({categories,value,disabled,onS
  const addCategory=()=>setEditor({kind:'category',mode:'add',parent:'',name:''})
  const addSubcategory=(parent:string)=>setEditor({kind:'subcategory',mode:'add',parent,name:''})
  const editCategory=(parent:string)=>setEditor({kind:'category',mode:'edit',oldValue:parent,parent:'',name:parent})
- const editSubcategory=(raw:string)=>{const item=splitCategory(raw);setEditor({kind:'subcategory',mode:'edit',oldValue:raw,parent:item.parent,name:item.child})}
+ const editSubcategory=(raw:string)=>{const item=splitCategory(raw);setEditor({kind:'subcategory',mode:'edit',oldValue:raw,parent:item.parent,name:item.child})
  const saveEditor=()=>{if(!editor)return;const name=editor.name.trim();if(!name)return;if(editor.kind==='category'){if(editor.mode==='add')onAddCategory(name);else if(editor.oldValue)onEditCategory(editor.oldValue,name)}else{if(!editor.parent)return;const next=`${editor.parent} > ${name}`;if(editor.mode==='add')onAddCategory(next);else if(editor.oldValue)onEditCategory(editor.oldValue,next)}setManageExpanded(editor.kind==='subcategory'?editor.parent:name);setEditor(null)}
  const deleteValue=(target:string,label:string,isParent:boolean)=>{const count=isParent?childrenFor(target).length:0;const extra=count?` This will also remove ${count} subcategor${count===1?'y':'ies'}.`:'';if(!window.confirm(`Delete ${label}?${extra}`))return;onDeleteCategory(target);if(isParent&&manageExpanded===target)setManageExpanded('');if(editor?.oldValue===target)setEditor(null)}
  if(disabled)return <label className="transactionCategoryField"><span>Category</span><input className="transactionCategoryInput" value="Transfer" readOnly disabled/></label>
