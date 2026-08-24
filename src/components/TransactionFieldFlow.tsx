@@ -127,18 +127,18 @@ export default function TransactionFieldFlow(){
  return <>
   {categoryInput}
   {accountInput}
-  {categoryOpen&&createPortal(<div className="spenzaCategorySheet" role="dialog" aria-modal="true" aria-label="Select category">
+  {categoryOpen&&createPortal(<><div className="spenzaPanelBackdrop" onClick={()=>{setCategoryOpen(false);setExpanded('')}}/><div className="spenzaCategorySheet" role="dialog" aria-modal="true" aria-label="Select category" onClick={e=>e.stopPropagation()}>
    <div className="categorySheetHandle"/>
    <div className="categorySheetHead"><span/><b>Category</b><button className="categoryClose" type="button" onClick={()=>{setCategoryOpen(false);setExpanded('')}}>×</button></div>
    <div className="categoryOptions">{Array.from(groups.entries()).map(([parent,items])=><div className="reactCategoryGroup" key={parent}>
     <button type="button" className={categoryValue===parent||categoryValue.startsWith(`${parent} > `)?'selected':''} onClick={()=>chooseParent(parent,items)}>{parent}</button>
     {expanded===parent&&items.filter(x=>x.child).length>0&&<div className="reactSubcategoryGrid">{items.filter(x=>x.child).map(item=><button type="button" className={categoryValue===item.raw?'selected':''} key={item.raw} onClick={()=>chooseCategory(item.raw)}>{item.child}</button>)}</div>}
    </div>)}</div>
-  </div>,document.body)}
-  {accountOpen&&createPortal(<div className="spenzaAccountSheet" role="dialog" aria-modal="true" aria-label="Select account">
+  </div></>,document.body)}
+  {accountOpen&&createPortal(<><div className="spenzaPanelBackdrop" onClick={()=>setAccountOpen(false)}/><div className="spenzaAccountSheet" role="dialog" aria-modal="true" aria-label="Select account" onClick={e=>e.stopPropagation()}>
    <div className="accountSheetHandle"/>
    <div className="accountSheetHead"><span/><b>Account</b><button className="accountSheetClose" type="button" onClick={()=>setAccountOpen(false)}>×</button></div>
    <div className="accountOptions">{Array.from(targets.accountSelect.options).filter(o=>o.value).map(option=>{const match=option.textContent?.match(/^(.*?)\s*\((.*?)\)\s*$/);const name=match?.[1]?.trim()||option.textContent?.trim()||'Account';const currency=match?.[2]?.trim()||'';return <button type="button" className={accountValue===option.value?'selected':''} key={option.value} onClick={()=>chooseAccount(option.value)}><span>{name}</span>{currency&&<small>{currency}</small>}</button>})}{!Array.from(targets.accountSelect.options).some(o=>o.value)&&<div className="accountEmpty">No accounts available.</div>}</div>
-  </div>,document.body)}
+  </div></>,document.body)}
  </>
 }
