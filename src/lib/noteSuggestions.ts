@@ -51,9 +51,13 @@ function ensureDropdown(){
   return dropdown
 }
 
-function hide(){
+function hideDropdownOnly(){
   dropdown?.remove()
   activeInput?.closest('label')?.classList.remove('noteSuggestionField')
+}
+
+function hide(){
+  hideDropdownOnly()
   activeInput=null
   activeKind=null
 }
@@ -69,10 +73,14 @@ function setReactInputValue(input:HTMLInputElement,value:string){
 function render(){
   if(!activeInput)return
   const query=activeInput.value.trim().toLocaleLowerCase()
-  const filtered=suggestions.filter(value=>!query||value.toLocaleLowerCase().includes(query)).slice(0,MAX_SUGGESTIONS)
+  if(!query){
+    hideDropdownOnly()
+    return
+  }
+  const filtered=suggestions.filter(value=>value.toLocaleLowerCase().includes(query)).slice(0,MAX_SUGGESTIONS)
   const menu=ensureDropdown()
   menu.replaceChildren()
-  if(!filtered.length){menu.remove();return}
+  if(!filtered.length){hideDropdownOnly();return}
   for(const value of filtered){
     const button=document.createElement('button')
     button.type='button'
@@ -137,6 +145,7 @@ export function initNoteSuggestions(){
     if(!kind)return
     activeInput=event.target as HTMLInputElement
     activeKind=kind
+    hideDropdownOnly()
     void loadSuggestions(activeInput,kind)
   })
   document.addEventListener('input',event=>{
