@@ -1,6 +1,7 @@
 import { loadData } from './db'
 
 const STORAGE_KEY='spenza-default-wallet-id'
+let settingsRenderPending=false
 
 function setNativeSelectValue(select:HTMLSelectElement,value:string){
   const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value')?.set
@@ -28,42 +29,50 @@ async function applyDefaultToAddTransaction(){
 
 async function renderSettingsPreference(){
   const settingsPage=document.querySelector<HTMLElement>('.settingsPage')
-  if(!settingsPage||settingsPage.querySelector('.defaultWalletSetting'))return
+  if(!settingsPage)return
+  const existing=settingsPage.querySelectorAll('.defaultWalletSetting')
+  if(existing.length){existing.forEach((row,index)=>{if(index>0)row.remove()});return}
+  if(settingsRenderPending)return
   const settingsList=settingsPage.querySelector<HTMLElement>('.settingsList')
   if(!settingsList)return
-  const data=await loadData().catch(()=>null)
-  if(!data||!settingsPage.isConnected)return
+  settingsRenderPending=true
+  try{
+    const data=await loadData().catch(()=>null)
+    if(!data||!settingsPage.isConnected||settingsPage.querySelector('.defaultWalletSetting'))return
 
-  const row=document.createElement('div')
-  row.className='settingsRow defaultWalletSetting'
-  const text=document.createElement('div')
-  const title=document.createElement('span')
-  title.textContent='Default Account'
-  const sub=document.createElement('small')
-  sub.textContent='Preselected for new transactions'
-  text.append(title,sub)
+    const row=document.createElement('div')
+    row.className='settingsRow defaultWalletSetting'
+    const text=document.createElement('div')
+    const title=document.createElement('span')
+    title.textContent='Default Account'
+    const sub=document.createElement('small')
+    sub.textContent='Preselected for new transactions'
+    text.append(title,sub)
 
-  const select=document.createElement('select')
-  select.className='defaultWalletSelect'
-  const none=document.createElement('option')
-  none.value=''
-  none.textContent='None'
-  select.appendChild(none)
-  for(const wallet of data.wallets){
-    const option=document.createElement('option')
-    option.value=wallet.id
-    option.textContent=`${wallet.name} (${wallet.currency})`
-    select.appendChild(option)
+    const select=document.createElement('select')
+    select.className='defaultWalletSelect'
+    const none=document.createElement('option')
+    none.value=''
+    none.textContent='None'
+    select.appendChild(none)
+    for(const wallet of data.wallets){
+      const option=document.createElement('option')
+      option.value=wallet.id
+      option.textContent=`${wallet.name} (${wallet.currency})`
+      select.appendChild(option)
+    }
+    const saved=localStorage.getItem(STORAGE_KEY)||''
+    select.value=data.wallets.some(wallet=>wallet.id===saved)?saved:''
+    select.addEventListener('change',()=>{
+      if(select.value)localStorage.setItem(STORAGE_KEY,select.value)
+      else localStorage.removeItem(STORAGE_KEY)
+    })
+
+    row.append(text,select)
+    settingsList.appendChild(row)
+  }finally{
+    settingsRenderPending=false
   }
-  const saved=localStorage.getItem(STORAGE_KEY)||''
-  select.value=data.wallets.some(wallet=>wallet.id===saved)?saved:''
-  select.addEventListener('change',()=>{
-    if(select.value)localStorage.setItem(STORAGE_KEY,select.value)
-    else localStorage.removeItem(STORAGE_KEY)
-  })
-
-  row.append(text,select)
-  settingsList.appendChild(row)
 }
 
 export function initDefaultWallet(){
