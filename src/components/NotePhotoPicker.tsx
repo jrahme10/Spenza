@@ -5,6 +5,8 @@ import './NotePhotoPicker.css'
 
 type Props={images:string[];onChange:(images:string[])=>void;maxImages?:number}
 
+type PickerInput=HTMLInputElement&{showPicker?:()=>void}
+
 export default function NotePhotoPicker({images,onChange,maxImages=5}:Props){
  const galleryRef=useRef<HTMLInputElement>(null),cameraRef=useRef<HTMLInputElement>(null)
  const [uploading,setUploading]=useState(false),[error,setError]=useState(''),[open,setOpen]=useState(false)
@@ -14,7 +16,7 @@ export default function NotePhotoPicker({images,onChange,maxImages=5}:Props){
   finally{setUploading(false);if(galleryRef.current)galleryRef.current.value='';if(cameraRef.current)cameraRef.current.value=''}
  }
  const openCamera=()=>{setOpen(false);cameraRef.current?.click()}
- const openGallery=()=>{setOpen(false);galleryRef.current?.click()}
+ const openGallery=()=>{setOpen(false);const input=galleryRef.current as PickerInput|null;if(!input)return;try{if(typeof input.showPicker==='function'){input.showPicker();return}}catch{}input.click()}
  return <div className="notePhotos compactPhotoPicker">
   <input ref={galleryRef} className="photoInput" type="file" accept="image/*" multiple onChange={e=>addFiles(e.target.files)}/>
   <input ref={cameraRef} className="photoInput" type="file" accept="image/*" capture="environment" onChange={e=>addFiles(e.target.files)}/>
