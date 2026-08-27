@@ -166,7 +166,7 @@ function prepareAmount(sheet: Element) {
 
   amount.addEventListener('click', () => openAmountKeypad(amount, sheet))
   amount.addEventListener('focus', () => openAmountKeypad(amount, sheet))
-  window.setTimeout(() => { syncAccountAmount(); amount.focus({ preventScroll: true }); revealField(amount) }, 80)
+  window.setTimeout(syncAccountAmount,80)
 }
 
 export function initTransactionFormKeyboard() {
