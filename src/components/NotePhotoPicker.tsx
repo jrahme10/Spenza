@@ -13,6 +13,8 @@ export default function NotePhotoPicker({images,onChange,maxImages=5}:Props){
   try{const stored:string[]=[];for(const file of picked)stored.push(await uploadNotePhoto(file));onChange([...images,...stored]);setOpen(false)}catch(e){setError(e instanceof Error?e.message:'Photo upload failed.')}
   finally{setUploading(false);if(galleryRef.current)galleryRef.current.value='';if(cameraRef.current)cameraRef.current.value=''}
  }
+ const openCamera=()=>{setOpen(false);cameraRef.current?.click()}
+ const openGallery=()=>{setOpen(false);galleryRef.current?.click()}
  return <div className="notePhotos compactPhotoPicker">
   <input ref={galleryRef} className="photoInput" type="file" accept="image/*" multiple onChange={e=>addFiles(e.target.files)}/>
   <input ref={cameraRef} className="photoInput" type="file" accept="image/*" capture="environment" onChange={e=>addFiles(e.target.files)}/>
@@ -21,7 +23,7 @@ export default function NotePhotoPicker({images,onChange,maxImages=5}:Props){
    <div className="photoChoiceSheet" onPointerDown={e=>e.stopPropagation()}>
     <div className="photoChoiceHandle"/>
     <div className="photoChoiceHead"><div><b>Add photo</b><small>Choose a source</small></div><button type="button" onClick={()=>setOpen(false)} aria-label="Close"><X/></button></div>
-    <div className="photoChoiceActions"><button type="button" onClick={()=>cameraRef.current?.click()} disabled={uploading||images.length>=maxImages}><Camera/><span><b>Camera</b><small>Take a photo</small></span></button><button type="button" onClick={()=>galleryRef.current?.click()} disabled={uploading||images.length>=maxImages}><Images/><span><b>Gallery</b><small>Choose from photos</small></span></button></div>
+    <div className="photoChoiceActions"><button type="button" onClick={openCamera} disabled={uploading||images.length>=maxImages}><Camera/><span><b>Camera</b><small>Take a photo</small></span></button><button type="button" onClick={openGallery} disabled={uploading||images.length>=maxImages}><Images/><span><b>Gallery</b><small>Choose from photos</small></span></button></div>
     {error&&<small className="photoHint">{error}</small>}
    </div>
   </div>}
