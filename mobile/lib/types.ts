@@ -1,6 +1,28 @@
 export type Currency='USD'|'LBP'
 export type TransactionType='expense'|'income'|'transfer'
 export type BillRecurrence='once'|'monthly'|'yearly'
+export type BillReminder=0|1|3|7
+export type SyncEntityType='wallet'|'transaction'|'bill'
+export type SyncOperation='upsert'|'delete'
+
+export type SyncTombstone={
+  entityType:SyncEntityType
+  entityId:string
+  deletedAt:string
+}
+
+export type SyncChange={
+  entityType:SyncEntityType
+  entityId:string
+  operation:SyncOperation
+  changedAt:string
+}
+
+export type SyncState={
+  tombstones:SyncTombstone[]
+  pendingChanges:SyncChange[]
+  lastSyncAt?:string
+}
 
 export type Wallet={
   id:string
@@ -35,11 +57,20 @@ export type Bill={
   category:string
   dueDate:string
   recurrence:BillRecurrence
-  reminderDays:0|1|3|7
+  reminderDays:BillReminder
   note?:string
   lastPaidDate?:string
   createdAt:string
   updatedAt:string
+}
+
+export type AppSecuritySettings={
+  enabled:boolean
+  pinHash?:string
+  salt?:string
+  timeoutMinutes:number
+  biometricEnabled?:boolean
+  biometricCredentialId?:string
 }
 
 export type SpenzaMobileData={
@@ -48,8 +79,24 @@ export type SpenzaMobileData={
   bills:Bill[]
   categories:string[]
   usdToLbpRate:number
+  security:AppSecuritySettings
+  notificationReadIds:string[]
+  notificationDismissedIds:string[]
+  sync:SyncState
   defaultWalletId?:string
 }
 
+export const DATA_SCHEMA_VERSION=4
 export const defaultCategories=['Food','Transport','Shopping','Bills','Coffee','Entertainment','Health','Education','Travel','Salary','Other']
-export const defaultData:SpenzaMobileData={wallets:[],transactions:[],bills:[],categories:defaultCategories,usdToLbpRate:89500}
+export const DEFAULT_USD_TO_LBP_RATE=89500
+export const defaultData:SpenzaMobileData={
+  wallets:[],
+  transactions:[],
+  bills:[],
+  categories:defaultCategories,
+  usdToLbpRate:DEFAULT_USD_TO_LBP_RATE,
+  security:{enabled:false,timeoutMinutes:0,biometricEnabled:false},
+  notificationReadIds:[],
+  notificationDismissedIds:[],
+  sync:{tombstones:[],pendingChanges:[]},
+}
