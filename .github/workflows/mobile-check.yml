@@ -6,6 +6,10 @@ on:
     paths:
       - 'mobile/**'
       - '.github/workflows/mobile-check.yml'
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile-check.yml'
   workflow_dispatch:
 
 jobs:
