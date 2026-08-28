@@ -11,6 +11,7 @@ const changedAtOf=(value:{updatedAt?:string;createdAt?:string})=>value.updatedAt
 function mergeById<T extends {id:string;updatedAt?:string;createdAt?:string}>(local:T[],remote:T[]){
  const map=new Map<string,T>()
  for(const item of [...local,...remote]){
+  if(!item?.id)continue
   const current=map.get(item.id)
   if(!current||changedAtOf(item)>=changedAtOf(current))map.set(item.id,item)
  }
@@ -80,9 +81,7 @@ export async function syncCloudData(local:SpenzaMobileData){
 }
 
 export async function replaceLocalWithCloud(local:SpenzaMobileData){
- const empty:{... never}=undefined as never
- void empty
- const base={...local,wallets:[],transactions:[],bills:[],sync:{...local.sync,pendingChanges:[]}}
+ const base:SpenzaMobileData={...local,wallets:[],transactions:[],bills:[],sync:{...local.sync,pendingChanges:[]}}
  return pullCloudData(base)
 }
 
