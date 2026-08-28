@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Spenza",
+    "slug": "spenza",
+    "scheme": "spenza",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Spenza to attach receipt and transaction photos.",
+          "cameraPermission": "Allow Spenza to take receipt and transaction photos."
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.spenza.app"
+    },
+    "android": {
+      "package": "com.spenza.app"
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
