@@ -90,6 +90,7 @@ export type SpenzaData = {
 export const DATA_SCHEMA_VERSION = 4
 export const defaultCategories = ['Food', 'Transport', 'Shopping', 'Bills', 'Coffee', 'Entertainment', 'Health', 'Education', 'Travel', 'Salary', 'Other']
 export const DEFAULT_USD_TO_LBP_RATE = 89500
+const RATE_STORAGE_KEY = 'spenza-usd-to-lbp-rate'
 
 export const defaultData: SpenzaData = {
   wallets: [],
@@ -104,6 +105,17 @@ export const defaultData: SpenzaData = {
 }
 
 export const localDataStore: DataStore<SpenzaData> = new IndexedDbDataStore<SpenzaData>()
+
+function readPersistedRate() {
+  if (typeof localStorage === 'undefined') return undefined
+  const value = Number(localStorage.getItem(RATE_STORAGE_KEY))
+  return Number.isFinite(value) && value > 0 ? value : undefined
+}
+
+function persistRate(value: number) {
+  if (typeof localStorage === 'undefined' || !Number.isFinite(value) || value <= 0) return
+  localStorage.setItem(RATE_STORAGE_KEY, String(value))
+}
 
 function isStoredEnvelope(value: unknown): value is StoredEnvelope<SpenzaData> {
   if (!value || typeof value !== 'object') return false
@@ -159,13 +171,14 @@ function normalizeData(stored?: Partial<SpenzaData>): SpenzaData {
   const savedCategories = stored?.categories ?? defaultCategories
   const usedTransactionCategories = transactions.map(transaction => transaction.category?.trim()).filter((category): category is string => !!category)
   const categories = [...new Map([...savedCategories,...usedTransactionCategories].map(category => [category.toLowerCase(),category])).values()]
+  const persistedRate = readPersistedRate()
 
   return {
     wallets,
     categories,
     transactions,
     bills,
-    usdToLbpRate: stored?.usdToLbpRate ?? DEFAULT_USD_TO_LBP_RATE,
+    usdToLbpRate: persistedRate ?? stored?.usdToLbpRate ?? DEFAULT_USD_TO_LBP_RATE,
     security: {
       enabled: stored?.security?.enabled ?? false,
       pinHash: stored?.security?.pinHash,
@@ -208,6 +221,7 @@ export async function loadData(): Promise<SpenzaData> {
 }
 
 export async function saveData(data: SpenzaData): Promise<void> {
+  persistRate(data.usdToLbpRate)
   await localDataStore.save(envelope(data))
 }
 
