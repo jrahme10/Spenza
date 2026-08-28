@@ -83,7 +83,7 @@ export type SpenzaMobileData={
   notificationReadIds:string[]
   notificationDismissedIds:string[]
   sync:SyncState
-  defaultWalletId?:string
+  defaultWalletId:string|undefined
 }
 
 export const DATA_SCHEMA_VERSION=4
@@ -99,4 +99,5 @@ export const defaultData:SpenzaMobileData={
   notificationReadIds:[],
   notificationDismissedIds:[],
   sync:{tombstones:[],pendingChanges:[]},
+  defaultWalletId:undefined,
 }
