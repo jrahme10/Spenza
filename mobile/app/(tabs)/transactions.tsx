@@ -1,5 +1,6 @@
-import React,{useMemo,useState} from 'react'
+import React,{useEffect,useMemo,useState} from 'react'
 import { Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View } from 'react-native'
+import { useLocalSearchParams } from 'expo-router'
 import { Search } from 'lucide-react-native'
 import { Screen } from '@/components/Screen'
 import { colors } from '@/lib/theme'
@@ -12,7 +13,14 @@ const today=()=>new Date().toISOString().slice(0,10)
 const inPeriod=(date:string,p:Period)=>p==='daily'?date===today():p==='monthly'?date.slice(0,7)===today().slice(0,7):date.slice(0,4)===today().slice(0,4)
 
 export default function TransactionsScreen(){
- const {data,deleteTransaction}=useAppData();const [search,setSearch]=useState(''),[type,setType]=useState<'all'|TransactionType>('all'),[period,setPeriod]=useState<Period>('daily'),[account,setAccount]=useState('all'),[category,setCategory]=useState('all')
+ const params=useLocalSearchParams<{account?:string}>()
+ const {data,deleteTransaction}=useAppData()
+ const [search,setSearch]=useState('')
+ const [type,setType]=useState<'all'|TransactionType>('all')
+ const [period,setPeriod]=useState<Period>('daily')
+ const [account,setAccount]=useState(params.account||'all')
+ const [category,setCategory]=useState('all')
+ useEffect(()=>{if(typeof params.account==='string'&&params.account)setAccount(params.account)},[params.account])
  const visible=useMemo(()=>data.transactions.filter(t=>{const text=`${t.title} ${t.category} ${t.note||''}`.toLowerCase();return(!search.trim()||text.includes(search.trim().toLowerCase()))&&(type==='all'||t.type===type)&&(account==='all'||t.walletId===account||t.toWalletId===account)&&(category==='all'||t.category===category)&&inPeriod(t.date,period)}).sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt.localeCompare(a.createdAt)),[data.transactions,search,type,account,category,period])
  const displayWallet=account==='all'?undefined:data.wallets.find(w=>w.id===account);const currency=displayWallet?.currency||data.wallets[0]?.currency||'USD';const convert=(t:any)=>{const w=data.wallets.find(x=>x.id===t.walletId);if(!w||w.currency===currency)return t.amount;return w.currency==='USD'?t.amount*data.usdToLbpRate:t.amount/data.usdToLbpRate};const income=visible.filter(t=>t.type==='income').reduce((s,t)=>s+convert(t),0),expense=visible.filter(t=>t.type==='expense').reduce((s,t)=>s+convert(t),0)
  return <Screen title="Transactions"><ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
