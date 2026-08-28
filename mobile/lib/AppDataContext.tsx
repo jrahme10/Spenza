@@ -43,7 +43,7 @@ function nextDueDate(date:string,recurrence:Bill['recurrence']){
  return d.toISOString().slice(0,10)
 }
 
-function queueChange(data:SpenzaMobileData,entityType:SyncEntityType,entityId:string,operation:SyncChange['operation'],changedAt:string){
+function queueChange(data:SpenzaMobileData,entityType:SyncEntityType,entityId:string,operation:SyncChange['operation'],changedAt:string):SpenzaMobileData{
  const key=`${entityType}:${entityId}`
  const pending=data.sync.pendingChanges.filter(c=>`${c.entityType}:${c.entityId}`!==key)
  return {...data,sync:{...data.sync,pendingChanges:[...pending,{entityType,entityId,operation,changedAt}]}}
@@ -64,7 +64,7 @@ export function AppDataProvider({children}:{children:React.ReactNode}){
  const addWallet=async(input:AddWalletInput)=>{
   const now=new Date().toISOString()
   const wallet:Wallet={id:uid(),...input,createdAt:now,updatedAt:now}
-  let next={...data,wallets:[...data.wallets,wallet],defaultWalletId:data.defaultWalletId||wallet.id}
+  let next:SpenzaMobileData={...data,wallets:[...data.wallets,wallet],defaultWalletId:data.defaultWalletId||wallet.id}
   next=queueChange(next,'wallet',wallet.id,'upsert',now)
   await commit(next);return wallet
  }
@@ -86,7 +86,7 @@ export function AppDataProvider({children}:{children:React.ReactNode}){
    })
   }
   const updated={...wallet,updatedAt:now}
-  let next={...data,wallets:data.wallets.map(w=>w.id===wallet.id?updated:w),transactions}
+  let next:SpenzaMobileData={...data,wallets:data.wallets.map(w=>w.id===wallet.id?updated:w),transactions}
   next=queueChange(next,'wallet',wallet.id,'upsert',now)
   for(const t of transactions){if(t.updatedAt===now)next=queueChange(next,'transaction',t.id,'upsert',now)}
   await commit(next)
@@ -95,7 +95,7 @@ export function AppDataProvider({children}:{children:React.ReactNode}){
   const now=new Date().toISOString()
   const affectedTransactions=data.transactions.filter(t=>t.walletId===id||t.toWalletId===id)
   const affectedBills=data.bills.filter(b=>b.walletId===id)
-  let next={...data,wallets:data.wallets.filter(w=>w.id!==id),transactions:data.transactions.filter(t=>t.walletId!==id&&t.toWalletId!==id),bills:data.bills.filter(b=>b.walletId!==id),defaultWalletId:data.defaultWalletId===id?undefined:data.defaultWalletId}
+  let next:SpenzaMobileData={...data,wallets:data.wallets.filter(w=>w.id!==id),transactions:data.transactions.filter(t=>t.walletId!==id&&t.toWalletId!==id),bills:data.bills.filter(b=>b.walletId!==id),defaultWalletId:data.defaultWalletId===id?undefined:data.defaultWalletId}
   next=queueChange(next,'wallet',id,'delete',now)
   for(const t of affectedTransactions)next=queueChange(next,'transaction',t.id,'delete',now)
   for(const b of affectedBills)next=queueChange(next,'bill',b.id,'delete',now)
@@ -105,20 +105,20 @@ export function AppDataProvider({children}:{children:React.ReactNode}){
  const addTransaction=async(input:AddTransactionInput)=>{
   const now=new Date().toISOString()
   const transaction:Transaction={...input,id:uid(),createdAt:now,updatedAt:now}
-  let next={...data,transactions:[transaction,...data.transactions]}
+  let next:SpenzaMobileData={...data,transactions:[transaction,...data.transactions]}
   next=queueChange(next,'transaction',transaction.id,'upsert',now)
   await commit(next);return transaction
  }
  const updateTransaction=async(transaction:Transaction)=>{
   const now=new Date().toISOString()
   const updated={...transaction,updatedAt:now}
-  let next={...data,transactions:data.transactions.map(t=>t.id===transaction.id?updated:t)}
+  let next:SpenzaMobileData={...data,transactions:data.transactions.map(t=>t.id===transaction.id?updated:t)}
   next=queueChange(next,'transaction',transaction.id,'upsert',now)
   await commit(next)
  }
  const deleteTransaction=async(id:string)=>{
   const now=new Date().toISOString()
-  let next={...data,transactions:data.transactions.filter(t=>t.id!==id)}
+  let next:SpenzaMobileData={...data,transactions:data.transactions.filter(t=>t.id!==id)}
   next=queueChange(next,'transaction',id,'delete',now)
   await commit(next)
  }
@@ -135,14 +135,14 @@ export function AppDataProvider({children}:{children:React.ReactNode}){
   const now=new Date().toISOString()
   const existing=data.bills.find(b=>b.id===input.id)
   const bill:Bill={...input,createdAt:input.createdAt||existing?.createdAt||now,updatedAt:now}
-  let next={...data,bills:existing?data.bills.map(b=>b.id===bill.id?bill:b):[...data.bills,bill]}
+  let next:SpenzaMobileData={...data,bills:existing?data.bills.map(b=>b.id===bill.id?bill:b):[...data.bills,bill]}
   next=queueChange(next,'bill',bill.id,'upsert',now)
   await commit(next)
   return bill
  }
  const deleteBill=async(id:string)=>{
   const now=new Date().toISOString()
-  let next={...data,bills:data.bills.filter(b=>b.id!==id)}
+  let next:SpenzaMobileData={...data,bills:data.bills.filter(b=>b.id!==id)}
   next=queueChange(next,'bill',id,'delete',now)
   await commit(next)
  }
@@ -153,7 +153,7 @@ export function AppDataProvider({children}:{children:React.ReactNode}){
   const now=new Date().toISOString()
   const tx:Transaction={id:uid(),type:'expense',title:bill.name,category:bill.category,amount:bill.amount,walletId:bill.walletId,date:today(),note:bill.note?`${bill.note} · Paid from Bills`:'Paid from Bills',createdAt:now,updatedAt:now}
   const updated:Bill={...bill,lastPaidDate:today(),dueDate:bill.recurrence==='once'?bill.dueDate:nextDueDate(bill.dueDate,bill.recurrence),updatedAt:now}
-  let next={...data,transactions:[tx,...data.transactions],bills:data.bills.map(b=>b.id===id?updated:b)}
+  let next:SpenzaMobileData={...data,transactions:[tx,...data.transactions],bills:data.bills.map(b=>b.id===id?updated:b)}
   next=queueChange(next,'transaction',tx.id,'upsert',now)
   next=queueChange(next,'bill',updated.id,'upsert',now)
   await commit(next)
@@ -162,7 +162,7 @@ export function AppDataProvider({children}:{children:React.ReactNode}){
   const bill=data.bills.find(b=>b.id===id);if(!bill||bill.recurrence==='once')return
   const now=new Date().toISOString()
   const updated={...bill,dueDate:nextDueDate(bill.dueDate,bill.recurrence),updatedAt:now}
-  let next={...data,bills:data.bills.map(b=>b.id===id?updated:b)}
+  let next:SpenzaMobileData={...data,bills:data.bills.map(b=>b.id===id?updated:b)}
   next=queueChange(next,'bill',updated.id,'upsert',now)
   await commit(next)
  }
