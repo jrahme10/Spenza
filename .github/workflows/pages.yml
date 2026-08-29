@@ -1,9 +1,10 @@
 name: Deploy Spenza to GitHub Pages
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Web CI"]
+    types: [completed]
     branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,16 +17,20 @@ concurrency:
 
 jobs:
   build:
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout validated commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Build
         env:
           VITE_VAPID_PUBLIC_KEY: BGZqLK7DKcn6DmUUi4UNl8geuuAXmFxwv8V6Yf3aIyQLG_Nu7PrhF94yI8g6QLpTF1JFUyeYncFAk5MnLm-dGDA
@@ -40,6 +45,7 @@ jobs:
           path: ./dist
 
   deploy:
+    if: github.event.workflow_run.conclusion == 'success'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -49,5 +55,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-# Stabilization build marker: roadmap release
