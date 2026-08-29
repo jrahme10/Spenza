@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LockKeyhole, ShieldCheck, X } from 'lucide-react'
 import { SpenzaData } from '../lib/db'
-import { createSalt, hashPin } from '../lib/security'
+import { createSalt, hashPin, verifyPin } from '../lib/security'
 import { platformBiometricAvailable, registerLocalBiometric } from '../lib/biometrics'
 import BillNotificationSettings from './BillNotificationSettings'
 
@@ -30,10 +30,10 @@ export default function SecuritySettings({ data, setData }: Props) {
     setConfirm('')
     setError('')
   }
-  const verify = async (value: string) =>
-    !!security.pinHash &&
-    !!security.salt &&
-    (await hashPin(value, security.salt)) === security.pinHash
+  const verify = async (value: string) => {
+    if (!security.pinHash || !security.salt) return false
+    return (await verifyPin(value, security.salt, security.pinHash)).valid
+  }
   const submit = async () => {
     if (!mode) return
     if (pin.length < 4) {
