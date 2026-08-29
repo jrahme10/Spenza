@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { LockKeyhole, ShieldCheck } from 'lucide-react'
 import { SpenzaData } from '../lib/db'
-import { hashPin } from '../lib/security'
+import { localRepository } from '../lib/repository'
+import { verifyPin } from '../lib/security'
 import { authenticateLocalBiometric, platformBiometricAvailable } from '../lib/biometrics'
 
 type Props = { data: SpenzaData }
@@ -61,8 +62,9 @@ export default function AppLockGate({ data }: Props) {
         setLocked(false)
         setPin('')
         setError('')
-      } else
+      } else {
         setError('Biometric unlock was cancelled or could not be verified. Use your PIN instead.')
+      }
     } finally {
       setBiometricBusy(false)
     }
@@ -82,18 +84,29 @@ export default function AppLockGate({ data }: Props) {
   }, [locked, canUseBiometric])
 
   if (!security?.enabled || !locked) return null
+
   const unlock = async () => {
     if (!security.salt || !security.pinHash) return
-    const ok = (await hashPin(pin, security.salt)) === security.pinHash
-    if (ok) {
-      setLocked(false)
-      setPin('')
-      setError('')
-    } else {
+    const result = await verifyPin(pin, security.salt, security.pinHash)
+    if (!result.valid) {
       setError('Incorrect PIN')
       setPin('')
+      return
     }
+
+    if (result.needsUpgrade && result.upgradedHash) {
+      const current = await localRepository.getSnapshot()
+      await localRepository.replaceSnapshot({
+        ...current,
+        security: { ...current.security, pinHash: result.upgradedHash },
+      })
+    }
+
+    setLocked(false)
+    setPin('')
+    setError('')
   }
+
   return (
     <div className="appLockScreen">
       <div className="appLockCard">
