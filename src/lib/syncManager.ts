@@ -1,5 +1,6 @@
 import { syncSupabaseIfAuthenticated, SupabaseSyncResult, SyncErrorKind, SyncProgress } from './supabaseSync'
 import { getSupabaseClient, getSupabaseUserId } from './supabaseClient'
+import { syncAccountSettings } from './accountSettingsSync'
 
 export type GlobalSyncState={
   status:'idle'|'syncing'|'synced'|'error'|'signed-out'|'cancelled'
@@ -43,10 +44,17 @@ async function ensureRealtimeSync(){
     },150)
   }
   let channel=supabase.channel(`spenza-sync-${userId}`)
-  for(const table of ['spenza_wallets','spenza_transactions','spenza_bills','spenza_tombstones']){
+  for(const table of ['spenza_wallets','spenza_transactions','spenza_bills','spenza_tombstones','spenza_budgets','spenza_account_settings']){
     channel=channel.on('postgres_changes',{event:'*',schema:'public',table,filter:`owner_id=eq.${userId}`},onRemoteChange)
   }
   realtimeChannel=channel.subscribe()
+}
+
+async function runAllSync(signal:AbortSignal,onProgress:(progress:SyncProgress)=>void):Promise<SupabaseSyncResult>{
+  const financial=await syncSupabaseIfAuthenticated({signal,onProgress})
+  if(financial.status!=='synced')return financial
+  const settingsData=await syncAccountSettings(financial.data)
+  return {...financial,data:settingsData}
 }
 
 export const syncManager={
@@ -59,7 +67,7 @@ export const syncManager={
     const controller=new AbortController()
     activeController=controller
     emit({status:'syncing',startedAt,progress:{phase:'checking',message:'Starting sync…'}})
-    const task:Promise<SupabaseSyncResult>=syncSupabaseIfAuthenticated({signal:controller.signal,onProgress:progress=>{if(!controller.signal.aborted||progress.phase==='cancelled')emit({status:progress.phase==='cancelled'?'cancelled':'syncing',startedAt,finishedAt:progress.phase==='cancelled'?Date.now():undefined,progress})}})
+    const task:Promise<SupabaseSyncResult>=runAllSync(controller.signal,progress=>{if(!controller.signal.aborted||progress.phase==='cancelled')emit({status:progress.phase==='cancelled'?'cancelled':'syncing',startedAt,finishedAt:progress.phase==='cancelled'?Date.now():undefined,progress})})
       .then(result=>{
         if(result.status==='cancelled')emit({status:'cancelled',startedAt,finishedAt:Date.now(),lastResult:result,progress:{phase:'cancelled',message:'Sync cancelled.'}})
         else if(result.status==='synced'){
