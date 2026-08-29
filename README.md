@@ -1,36 +1,47 @@
 # Spenza
 
-Spenza is a mobile-first React expense management app designed around a classy, user-friendly interface and a privacy-first local + cloud data model.
+Spenza is a mobile-first React expense management app with a privacy-first local + optional cloud data model.
 
-## Features
+## Implemented features
 
 - Mobile-first expense dashboard
-- Transactions and wallets
-- Budgets and recurring expenses
-- Categories and subcategories
+- Wallets/accounts with USD and LBP support
+- Expense, income, and transfer transactions
+- Recurring bills and reminders
+- Custom categories
+- Budgets and category budget limits
 - Analytics and insights
-- Offline IndexedDB storage
-- Optional Supabase cloud sync and authentication
-- AI natural-language expense entry
-- AI financial assistant
-- Receipt scanning and voice entry foundations
-- Premium/subscription UI foundation
-- PWA support
-- Supabase migrations, RLS and Edge Function foundation
+- Receipt scanning
+- Optional notes and transaction photos
+- Offline-first IndexedDB storage
+- Optional Supabase authentication and cross-device sync
+- App lock with PIN and local biometric unlock support
+- PWA install/update support
+- Supabase migrations and row-level security policies
 
 ## Run locally
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
 Copy `.env.example` to `.env` and provide your Supabase values when cloud mode is needed.
 
+## Security note
+
+A Supabase project URL and publishable client key were previously committed to repository history. They are not private service-role credentials, but the project credentials should still be rotated as a hygiene measure. Do not commit `.env`, `.env.local`, or `.env.production` files.
+
+Keep all private API keys and service-role credentials server-side and out of the React client.
+
 ## GitHub Pages
 
-The included workflow builds and deploys Spenza to GitHub Pages on pushes to `main`.
+The included workflow builds and deploys Spenza to GitHub Pages from `main` after the required CI checks pass.
 
 ## Supabase
 
-Run the SQL migrations in `supabase/migrations` and deploy `supabase/functions/finance-ai` for AI features. Keep private API keys server-side in Supabase secrets, never in the React client.
+Run the SQL migrations in `supabase/migrations` before enabling cloud sync. Existing RLS policies must remain enabled.
+
+## Mobile app
+
+The separate Expo app under `/mobile` is currently an experimental native client that is being brought to parity with the web/PWA implementation.
