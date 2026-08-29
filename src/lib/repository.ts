@@ -20,6 +20,52 @@ function withPendingChange(data:SpenzaData,entityType:SyncEntityType,entityId:st
   return {...data,sync:{...data.sync,pendingChanges:[...others,change].sort((a,b)=>a.changedAt.localeCompare(b.changedAt))}}
 }
 
+function entityVersion(data:SpenzaData,entityType:SyncEntityType,entityId:string){
+  const tombstone=data.sync.tombstones.find(t=>t.entityType===entityType&&t.entityId===entityId)
+  if(tombstone)return tombstone.deletedAt
+  if(entityType==='wallet')return data.wallets.find(item=>item.id===entityId)?.updatedAt||''
+  if(entityType==='transaction')return data.transactions.find(item=>item.id===entityId)?.updatedAt||''
+  return data.bills.find(item=>item.id===entityId)?.updatedAt||''
+}
+
+function preserveConcurrentLocalChanges(target:SpenzaData,current:SpenzaData):SpenzaData{
+  let merged=target
+  for(const change of current.sync.pendingChanges){
+    if(change.changedAt<=entityVersion(merged,change.entityType,change.entityId))continue
+
+    if(change.operation==='delete'){
+      if(change.entityType==='wallet'){
+        merged={...merged,wallets:merged.wallets.filter(item=>item.id!==change.entityId),transactions:merged.transactions.filter(item=>item.walletId!==change.entityId&&item.toWalletId!==change.entityId),bills:merged.bills.filter(item=>item.walletId!==change.entityId)}
+      }else if(change.entityType==='transaction'){
+        merged={...merged,transactions:merged.transactions.filter(item=>item.id!==change.entityId)}
+      }else{
+        merged={...merged,bills:merged.bills.filter(item=>item.id!==change.entityId)}
+      }
+      const tombstone=current.sync.tombstones.find(item=>item.entityType===change.entityType&&item.entityId===change.entityId)
+      merged=withTombstone(merged,change.entityType,change.entityId,tombstone?.deletedAt||change.changedAt)
+      merged=withPendingChange(merged,change.entityType,change.entityId,'delete',change.changedAt)
+      continue
+    }
+
+    if(change.entityType==='wallet'){
+      const item=current.wallets.find(wallet=>wallet.id===change.entityId)
+      if(!item)continue
+      merged={...merged,wallets:merged.wallets.some(wallet=>wallet.id===item.id)?merged.wallets.map(wallet=>wallet.id===item.id?item:wallet):[...merged.wallets,item]}
+    }else if(change.entityType==='transaction'){
+      const item=current.transactions.find(transaction=>transaction.id===change.entityId)
+      if(!item)continue
+      merged={...merged,transactions:merged.transactions.some(transaction=>transaction.id===item.id)?merged.transactions.map(transaction=>transaction.id===item.id?item:transaction):[item,...merged.transactions]}
+    }else{
+      const item=current.bills.find(bill=>bill.id===change.entityId)
+      if(!item)continue
+      merged={...merged,bills:merged.bills.some(bill=>bill.id===item.id)?merged.bills.map(bill=>bill.id===item.id?item:bill):[...merged.bills,item]}
+    }
+    merged=withoutTombstone(merged,change.entityType,change.entityId)
+    merged=withPendingChange(merged,change.entityType,change.entityId,'upsert',change.changedAt)
+  }
+  return merged
+}
+
 export function hasFinancialData(data:SpenzaData){return data.wallets.length>0||data.transactions.length>0||data.bills.length>0}
 
 export interface SpenzaRepository {
@@ -38,7 +84,7 @@ export interface SpenzaRepository {
 
 export class LocalSpenzaRepository implements SpenzaRepository {
   async getSnapshot(){return loadData()}
-  async replaceSnapshot(data:SpenzaData){await saveData(data)}
+  async replaceSnapshot(data:SpenzaData){const current=await loadData();await saveData(preserveConcurrentLocalChanges(data,current))}
   async clearFinancialDataForAccountSwitch(){const data=await loadData();const cleared:SpenzaData={...data,wallets:[],transactions:[],bills:[],sync:{tombstones:[],pendingChanges:[],lastSyncAt:undefined}};await saveData(cleared);return cleared}
   async upsertWallet(wallet:Wallet){let data=await loadData();const stamp=now();const existing=data.wallets.find(w=>w.id===wallet.id);const next:Wallet={...wallet,createdAt:existing?.createdAt||wallet.createdAt||stamp,updatedAt:stamp};data={...data,wallets:existing?data.wallets.map(w=>w.id===wallet.id?next:w):[...data.wallets,next]};data=withoutTombstone(data,'wallet',wallet.id);data=withPendingChange(data,'wallet',wallet.id,'upsert',stamp);await saveData(data);return data}
   async upsertWalletAndTransactions(wallet:Wallet,transactions:Transaction[]){let data=await loadData();const stamp=now();const existing=data.wallets.find(w=>w.id===wallet.id);const nextWallet:Wallet={...wallet,createdAt:existing?.createdAt||wallet.createdAt||stamp,updatedAt:stamp};const incoming=new Map(transactions.map(t=>[t.id,t]));const nextTransactions=data.transactions.map(current=>{const candidate=incoming.get(current.id);if(!candidate)return current;incoming.delete(current.id);return {...candidate,createdAt:current.createdAt||candidate.createdAt||stamp,updatedAt:stamp}});for(const candidate of incoming.values())nextTransactions.unshift({...candidate,createdAt:candidate.createdAt||stamp,updatedAt:stamp});data={...data,wallets:existing?data.wallets.map(w=>w.id===wallet.id?nextWallet:w):[...data.wallets,nextWallet],transactions:nextTransactions};data=withoutTombstone(data,'wallet',wallet.id);data=withPendingChange(data,'wallet',wallet.id,'upsert',stamp);for(const transaction of transactions){data=withoutTombstone(data,'transaction',transaction.id);data=withPendingChange(data,'transaction',transaction.id,'upsert',stamp)}await saveData(data);return data}
