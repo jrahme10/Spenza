@@ -1,0 +1,95 @@
+name: Bootstrap quality tooling
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install quality tooling
+        run: |
+          npm install --save-dev prettier eslint @eslint/js typescript-eslint eslint-plugin-react-hooks eslint-plugin-react-refresh vitest jsdom @testing-library/react @testing-library/jest-dom
+          npm pkg set scripts.lint="eslint ." scripts.test="vitest run --passWithNoTests" scripts.test:watch="vitest"
+      - name: Write configs
+        run: |
+          cat > .prettierrc.json <<'EOF'
+          {
+            "semi": false,
+            "singleQuote": true,
+            "trailingComma": "all",
+            "printWidth": 100
+          }
+          EOF
+          cat > eslint.config.js <<'EOF'
+          import js from '@eslint/js'
+          import tseslint from 'typescript-eslint'
+          import reactHooks from 'eslint-plugin-react-hooks'
+
+          export default tseslint.config(
+            { ignores: ['dist/**', 'mobile/**', 'node_modules/**'] },
+            js.configs.recommended,
+            ...tseslint.configs.recommended,
+            {
+              files: ['src/**/*.{ts,tsx}'],
+              languageOptions: {
+                globals: {
+                  window: 'readonly', document: 'readonly', navigator: 'readonly', localStorage: 'readonly',
+                  crypto: 'readonly', fetch: 'readonly', URL: 'readonly', Blob: 'readonly', File: 'readonly',
+                  Notification: 'readonly', HTMLElement: 'readonly', HTMLInputElement: 'readonly',
+                  HTMLSelectElement: 'readonly', HTMLButtonElement: 'readonly', Event: 'readonly', DOMException: 'readonly',
+                  setTimeout: 'readonly', clearTimeout: 'readonly', setInterval: 'readonly', clearInterval: 'readonly',
+                  indexedDB: 'readonly', IDBDatabase: 'readonly', IDBRequest: 'readonly', IDBTransaction: 'readonly',
+                  IDBObjectStore: 'readonly', IDBKeyRange: 'readonly', console: 'readonly'
+                }
+              },
+              plugins: { 'react-hooks': reactHooks },
+              rules: {
+                '@typescript-eslint/no-explicit-any': 'off',
+                '@typescript-eslint/no-unused-vars': 'off',
+                'no-undef': 'off',
+                'no-unused-vars': 'off',
+                'react-hooks/rules-of-hooks': 'error',
+                'react-hooks/exhaustive-deps': 'warn'
+              }
+            }
+          )
+          EOF
+          cat > vitest.config.ts <<'EOF'
+          import { defineConfig } from 'vitest/config'
+
+          export default defineConfig({
+            test: {
+              environment: 'jsdom',
+              setupFiles: ['./src/test/setup.ts'],
+            },
+          })
+          EOF
+          mkdir -p src/test
+          cat > src/test/setup.ts <<'EOF'
+          import '@testing-library/jest-dom/vitest'
+          EOF
+      - name: Format source
+        run: npx prettier --write "src/**/*.{ts,tsx,css}"
+      - name: Validate
+        run: |
+          npm run lint
+          npm run test
+          npm run build -- --base=/Spenza/
+      - name: Commit tooling and formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json .prettierrc.json eslint.config.js vitest.config.ts src
+          git commit -m "chore: add lint format and test tooling"
+          git push
