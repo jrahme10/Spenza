@@ -1,5 +1,26 @@
 /* Keep pages compact while pinning the centered bottom navigation to the viewport. */
-.reference-layout{padding-bottom:88px!important}
-.reference-layout .page,.reference-layout .homeScreen{min-height:auto!important}
-.reference-layout nav{position:fixed!important;z-index:20!important;left:50%!important;right:auto!important;bottom:0!important;transform:translateX(-50%)!important;width:100%!important;max-width:460px!important;margin:0!important;box-sizing:border-box!important}
-@media(min-width:700px){.reference-layout nav{bottom:0!important;border-radius:0!important}}
+.reference-layout {
+  padding-bottom: 88px !important;
+}
+.reference-layout .page,
+.reference-layout .homeScreen {
+  min-height: auto !important;
+}
+.reference-layout nav {
+  position: fixed !important;
+  z-index: 20 !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: 0 !important;
+  transform: translateX(-50%) !important;
+  width: 100% !important;
+  max-width: 460px !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+@media (min-width: 700px) {
+  .reference-layout nav {
+    bottom: 0 !important;
+    border-radius: 0 !important;
+  }
+}

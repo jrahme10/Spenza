@@ -1,23 +1,476 @@
 import { useMemo, useRef, useState } from 'react'
-import { AlertTriangle, CalendarClock, Check, Pencil, Plus, SkipForward, Trash2, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  CalendarClock,
+  Check,
+  Pencil,
+  Plus,
+  SkipForward,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { Bill, BillRecurrence, BillReminder, Currency, SpenzaData, Transaction } from '../lib/db'
 import { localRepository } from '../lib/repository'
 import { deterministicUuid, localDateString } from '../lib/localDate'
 
-type Props = { data:SpenzaData; setData:React.Dispatch<React.SetStateAction<SpenzaData>> }
-type BillForm={id?:string;name:string;amount:string;walletId:string;category:string;dueDate:string;recurrence:BillRecurrence;reminderDays:BillReminder;note:string}
-const today=()=>localDateString()
-const money=(n:number,c:Currency)=>new Intl.NumberFormat('en-US',{style:'currency',currency:c,maximumFractionDigits:c==='LBP'?0:2}).format(n)
-function nextDueDate(date:string,recurrence:BillRecurrence){if(recurrence==='once')return date;const [year,month,day]=date.split('-').map(Number);const d=new Date(year,month-1,day,12);if(recurrence==='monthly')d.setMonth(d.getMonth()+1);else d.setFullYear(d.getFullYear()+1);return localDateString(d)}
-function isPayable(bill:Bill){if(!bill.lastPaidDate)return true;if(bill.recurrence==='once')return false;return today()>=bill.dueDate}
+type Props = { data: SpenzaData; setData: React.Dispatch<React.SetStateAction<SpenzaData>> }
+type BillForm = {
+  id?: string
+  name: string
+  amount: string
+  walletId: string
+  category: string
+  dueDate: string
+  recurrence: BillRecurrence
+  reminderDays: BillReminder
+  note: string
+}
+const today = () => localDateString()
+const money = (n: number, c: Currency) =>
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: c,
+    maximumFractionDigits: c === 'LBP' ? 0 : 2,
+  }).format(n)
+function nextDueDate(date: string, recurrence: BillRecurrence) {
+  if (recurrence === 'once') return date
+  const [year, month, day] = date.split('-').map(Number)
+  const d = new Date(year, month - 1, day, 12)
+  if (recurrence === 'monthly') d.setMonth(d.getMonth() + 1)
+  else d.setFullYear(d.getFullYear() + 1)
+  return localDateString(d)
+}
+function isPayable(bill: Bill) {
+  if (!bill.lastPaidDate) return true
+  if (bill.recurrence === 'once') return false
+  return today() >= bill.dueDate
+}
 
-export default function BillsManager({data,setData}:Props){
- const [form,setForm]=useState<BillForm|null>(null);const [filter,setFilter]=useState<'all'|'upcoming'|'overdue'>('all');const [deleteBill,setDeleteBill]=useState<Bill|null>(null);const [skipBill,setSkipBill]=useState<Bill|null>(null);const [deleting,setDeleting]=useState(false);const [skipping,setSkipping]=useState(false);const payingBills=useRef(new Set<string>())
- const sorted=useMemo(()=>[...data.bills].sort((a,b)=>a.dueDate.localeCompare(b.dueDate)),[data.bills]);const visible=sorted.filter(b=>filter==='all'||(filter==='overdue'?b.dueDate<today()&&isPayable(b):b.dueDate>=today()))
- const openNew=()=>{const defaultWallet=data.wallets.find(w=>w.id===localStorage.getItem('spenza-default-wallet-id'))||data.wallets[0];setForm({name:'',amount:'',walletId:defaultWallet?.id||'',category:data.categories.includes('Bills')?'Bills':data.categories[0]||'Other',dueDate:today(),recurrence:'monthly',reminderDays:3,note:''})};const openEdit=(b:Bill)=>setForm({id:b.id,name:b.name,amount:String(b.amount),walletId:b.walletId,category:b.category,dueDate:b.dueDate,recurrence:b.recurrence,reminderDays:b.reminderDays,note:b.note||''})
- const save=async()=>{if(!form)return;const amount=Number(form.amount);if(!form.name.trim()||!form.walletId||!amount||amount<=0||!form.dueDate)return;const now=new Date().toISOString();const existing=data.bills.find(b=>b.id===form.id);const scheduleChanged=!!existing&&(existing.dueDate!==form.dueDate||existing.recurrence!==form.recurrence);const bill:Bill={id:form.id||crypto.randomUUID(),name:form.name.trim(),amount,walletId:form.walletId,category:form.category,dueDate:form.dueDate,recurrence:form.recurrence,reminderDays:form.reminderDays,note:form.note.trim()||undefined,lastPaidDate:scheduleChanged?undefined:existing?.lastPaidDate,createdAt:existing?.createdAt||now,updatedAt:now};const next=await localRepository.upsertBill(bill);setData(next);setForm(null)}
- const confirmRemove=async()=>{if(!deleteBill||deleting)return;try{setDeleting(true);const next=await localRepository.deleteBill(deleteBill.id);setData(next);setDeleteBill(null)}finally{setDeleting(false)}}
- const confirmSkip=async()=>{if(!skipBill||skipBill.recurrence==='once'||skipping)return;try{setSkipping(true);const updated:Bill={...skipBill,dueDate:nextDueDate(skipBill.dueDate,skipBill.recurrence),updatedAt:new Date().toISOString()};const next=await localRepository.upsertBill(updated);setData(next);setSkipBill(null)}finally{setSkipping(false)}}
- const markPaid=async(bill:Bill)=>{if(payingBills.current.has(bill.id)||!isPayable(bill))return;const wallet=data.wallets.find(w=>w.id===bill.walletId);if(!wallet)return;payingBills.current.add(bill.id);try{const paidDate=today(),now=new Date().toISOString(),occurrenceDueDate=bill.dueDate;const paymentId=await deterministicUuid(`spenza:bill-payment:${bill.id}:${occurrenceDueDate}`);const tx:Transaction={id:paymentId,type:'expense',title:bill.name,category:bill.category,amount:bill.amount,walletId:bill.walletId,date:paidDate,note:bill.note?`${bill.note} · Paid from Bills`:'Paid from Bills',createdAt:now,updatedAt:now};const updatedBill:Bill={...bill,lastPaidDate:paidDate,dueDate:bill.recurrence==='once'?bill.dueDate:nextDueDate(bill.dueDate,bill.recurrence),updatedAt:now};const next=await localRepository.payBill(tx,updatedBill);setData(next)}finally{window.setTimeout(()=>payingBills.current.delete(bill.id),750)}}
- return <><section className="page refPage billsPage"><div className="centerPageHead withAction"><h1>Bills</h1><button className="iconAdd" onClick={openNew}><Plus/></button></div><div className="scheduledInfo"><CalendarClock/><div><b>Scheduled payments</b><span>These do not change your account balance until you confirm <strong>Paid</strong>. Recurring items can also be skipped for one occurrence.</span></div></div><div className="filters refFilters billsFilters"><button className={filter==='all'?'selected':''} onClick={()=>setFilter('all')}>All</button><button className={filter==='upcoming'?'selected':''} onClick={()=>setFilter('upcoming')}>Upcoming</button><button className={filter==='overdue'?'selected':''} onClick={()=>setFilter('overdue')}>Overdue</button></div>{!data.wallets.length&&<div className="empty">Create an account before adding bills.</div>}{visible.length?<div className="billsList">{visible.map(b=>{const w=data.wallets.find(x=>x.id===b.walletId);const payable=isPayable(b),overdue=b.dueDate<today()&&payable,paid=!payable;return <article className={`billCard ${overdue?'overdue':''} ${paid?'paid':''}`} key={b.id}><div className="billIcon"><CalendarClock/></div><div className="billMain"><div className="billTitleRow"><b>{b.name}</b><span className={overdue?'billStatus overdueText':paid?'billStatus paidText':'billStatus'}>{paid?'Paid':overdue?'Overdue':'Due'} {new Date(`${b.dueDate}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div><strong>{money(b.amount,w?.currency||'USD')}</strong><small>{w?.name||'Missing account'} · {b.category} · {b.recurrence==='once'?'One-time':b.recurrence} · Reminder {b.reminderDays===0?'same day':`${b.reminderDays}d before`}</small></div><div className="billActions"><button className={`billPaid ${paid?'disabled':''}`} onClick={()=>markPaid(b)} title={paid?(b.recurrence==='once'?'Already paid':'Paid for this billing period'):'Mark paid'} disabled={paid}><Check/></button>{b.recurrence!=='once'&&payable&&<button className="billSkip" onClick={()=>setSkipBill(b)} title="Skip this occurrence"><SkipForward/></button>}<button onClick={()=>openEdit(b)} title="Edit"><Pencil/></button><button onClick={()=>setDeleteBill(b)} title="Delete"><Trash2/></button></div></article>})}</div>:data.wallets.length?<div className="empty">No bills in this view.</div>:null}{form&&<div className="overlay" onClick={()=>setForm(null)}><div className="sheet refSheet billSheet" onClick={e=>e.stopPropagation()}><div className="sheetTop"><div><span className="eyebrow">{form.id?'EDIT':'NEW'} BILL</span><h2>{form.id?'Edit Bill':'Add Bill'}</h2></div><button className="close" onClick={()=>setForm(null)}><X/></button></div><label>Bill name<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Rent, Internet, Electricity..." autoFocus/></label><label>Amount<input className="amountInput" type="number" inputMode="decimal" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder="0.00"/></label><label>Account<select value={form.walletId} onChange={e=>setForm({...form,walletId:e.target.value})}><option value="">Select Account</option>{data.wallets.map(w=><option value={w.id} key={w.id}>{w.name} ({w.currency})</option>)}</select></label><label>Category<select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{data.categories.map(c=><option key={c}>{c}</option>)}</select></label><label>Due date<input type="date" value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})}/></label><label>Repeat<select value={form.recurrence} onChange={e=>setForm({...form,recurrence:e.target.value as BillRecurrence})}><option value="once">One-time</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label><label>Reminder<select value={form.reminderDays} onChange={e=>setForm({...form,reminderDays:Number(e.target.value) as BillReminder})}><option value={0}>On due date</option><option value={1}>1 day before</option><option value={3}>3 days before</option><option value={7}>1 week before</option></select></label><label>Note<input value={form.note} onChange={e=>setForm({...form,note:e.target.value})} placeholder="Optional note"/></label><button className="primary" onClick={save}>{form.id?'Save Bill':'Create Bill'}</button></div></div>}</section>{skipBill&&<div className="dialogOverlay"><div className="dialogCard" role="dialog" aria-modal="true" aria-labelledby="skip-bill-title"><div className="dialogIcon infoIcon"><SkipForward/></div><h2 id="skip-bill-title">Skip this payment?</h2><p><b>{skipBill.name}</b> will move to its next {skipBill.recurrence} due date. No transaction will be created and your account balance will stay unchanged.</p><div className="dialogActions"><button className="dialogCancel" disabled={skipping} onClick={()=>setSkipBill(null)}>Cancel</button><button className="dialogConfirm billSkipConfirm" disabled={skipping} onClick={confirmSkip}>{skipping?'Skipping…':'Skip'}</button></div></div></div>}{deleteBill&&<div className="dialogOverlay"><div className="dialogCard" role="dialog" aria-modal="true" aria-labelledby="delete-bill-title"><div className="dialogIcon dangerIcon"><AlertTriangle/></div><h2 id="delete-bill-title">Delete bill?</h2><p><b>{deleteBill.name}</b> will be permanently removed from Bills. Existing transactions already created from this bill will stay unchanged.</p><div className="dialogActions"><button className="dialogCancel" disabled={deleting} onClick={()=>setDeleteBill(null)}>Cancel</button><button className="dialogConfirm" disabled={deleting} onClick={confirmRemove}>{deleting?'Deleting…':'Delete'}</button></div></div></div>}</>
+export default function BillsManager({ data, setData }: Props) {
+  const [form, setForm] = useState<BillForm | null>(null)
+  const [filter, setFilter] = useState<'all' | 'upcoming' | 'overdue'>('all')
+  const [deleteBill, setDeleteBill] = useState<Bill | null>(null)
+  const [skipBill, setSkipBill] = useState<Bill | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [skipping, setSkipping] = useState(false)
+  const payingBills = useRef(new Set<string>())
+  const sorted = useMemo(
+    () => [...data.bills].sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
+    [data.bills],
+  )
+  const visible = sorted.filter(
+    (b) =>
+      filter === 'all' ||
+      (filter === 'overdue' ? b.dueDate < today() && isPayable(b) : b.dueDate >= today()),
+  )
+  const openNew = () => {
+    const defaultWallet =
+      data.wallets.find((w) => w.id === localStorage.getItem('spenza-default-wallet-id')) ||
+      data.wallets[0]
+    setForm({
+      name: '',
+      amount: '',
+      walletId: defaultWallet?.id || '',
+      category: data.categories.includes('Bills') ? 'Bills' : data.categories[0] || 'Other',
+      dueDate: today(),
+      recurrence: 'monthly',
+      reminderDays: 3,
+      note: '',
+    })
+  }
+  const openEdit = (b: Bill) =>
+    setForm({
+      id: b.id,
+      name: b.name,
+      amount: String(b.amount),
+      walletId: b.walletId,
+      category: b.category,
+      dueDate: b.dueDate,
+      recurrence: b.recurrence,
+      reminderDays: b.reminderDays,
+      note: b.note || '',
+    })
+  const save = async () => {
+    if (!form) return
+    const amount = Number(form.amount)
+    if (!form.name.trim() || !form.walletId || !amount || amount <= 0 || !form.dueDate) return
+    const now = new Date().toISOString()
+    const existing = data.bills.find((b) => b.id === form.id)
+    const scheduleChanged =
+      !!existing && (existing.dueDate !== form.dueDate || existing.recurrence !== form.recurrence)
+    const bill: Bill = {
+      id: form.id || crypto.randomUUID(),
+      name: form.name.trim(),
+      amount,
+      walletId: form.walletId,
+      category: form.category,
+      dueDate: form.dueDate,
+      recurrence: form.recurrence,
+      reminderDays: form.reminderDays,
+      note: form.note.trim() || undefined,
+      lastPaidDate: scheduleChanged ? undefined : existing?.lastPaidDate,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+    }
+    const next = await localRepository.upsertBill(bill)
+    setData(next)
+    setForm(null)
+  }
+  const confirmRemove = async () => {
+    if (!deleteBill || deleting) return
+    try {
+      setDeleting(true)
+      const next = await localRepository.deleteBill(deleteBill.id)
+      setData(next)
+      setDeleteBill(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
+  const confirmSkip = async () => {
+    if (!skipBill || skipBill.recurrence === 'once' || skipping) return
+    try {
+      setSkipping(true)
+      const updated: Bill = {
+        ...skipBill,
+        dueDate: nextDueDate(skipBill.dueDate, skipBill.recurrence),
+        updatedAt: new Date().toISOString(),
+      }
+      const next = await localRepository.upsertBill(updated)
+      setData(next)
+      setSkipBill(null)
+    } finally {
+      setSkipping(false)
+    }
+  }
+  const markPaid = async (bill: Bill) => {
+    if (payingBills.current.has(bill.id) || !isPayable(bill)) return
+    const wallet = data.wallets.find((w) => w.id === bill.walletId)
+    if (!wallet) return
+    payingBills.current.add(bill.id)
+    try {
+      const paidDate = today(),
+        now = new Date().toISOString(),
+        occurrenceDueDate = bill.dueDate
+      const paymentId = await deterministicUuid(
+        `spenza:bill-payment:${bill.id}:${occurrenceDueDate}`,
+      )
+      const tx: Transaction = {
+        id: paymentId,
+        type: 'expense',
+        title: bill.name,
+        category: bill.category,
+        amount: bill.amount,
+        walletId: bill.walletId,
+        date: paidDate,
+        note: bill.note ? `${bill.note} · Paid from Bills` : 'Paid from Bills',
+        createdAt: now,
+        updatedAt: now,
+      }
+      const updatedBill: Bill = {
+        ...bill,
+        lastPaidDate: paidDate,
+        dueDate:
+          bill.recurrence === 'once' ? bill.dueDate : nextDueDate(bill.dueDate, bill.recurrence),
+        updatedAt: now,
+      }
+      const next = await localRepository.payBill(tx, updatedBill)
+      setData(next)
+    } finally {
+      window.setTimeout(() => payingBills.current.delete(bill.id), 750)
+    }
+  }
+  return (
+    <>
+      <section className="page refPage billsPage">
+        <div className="centerPageHead withAction">
+          <h1>Bills</h1>
+          <button className="iconAdd" onClick={openNew}>
+            <Plus />
+          </button>
+        </div>
+        <div className="scheduledInfo">
+          <CalendarClock />
+          <div>
+            <b>Scheduled payments</b>
+            <span>
+              These do not change your account balance until you confirm <strong>Paid</strong>.
+              Recurring items can also be skipped for one occurrence.
+            </span>
+          </div>
+        </div>
+        <div className="filters refFilters billsFilters">
+          <button className={filter === 'all' ? 'selected' : ''} onClick={() => setFilter('all')}>
+            All
+          </button>
+          <button
+            className={filter === 'upcoming' ? 'selected' : ''}
+            onClick={() => setFilter('upcoming')}
+          >
+            Upcoming
+          </button>
+          <button
+            className={filter === 'overdue' ? 'selected' : ''}
+            onClick={() => setFilter('overdue')}
+          >
+            Overdue
+          </button>
+        </div>
+        {!data.wallets.length && (
+          <div className="empty">Create an account before adding bills.</div>
+        )}
+        {visible.length ? (
+          <div className="billsList">
+            {visible.map((b) => {
+              const w = data.wallets.find((x) => x.id === b.walletId)
+              const payable = isPayable(b),
+                overdue = b.dueDate < today() && payable,
+                paid = !payable
+              return (
+                <article
+                  className={`billCard ${overdue ? 'overdue' : ''} ${paid ? 'paid' : ''}`}
+                  key={b.id}
+                >
+                  <div className="billIcon">
+                    <CalendarClock />
+                  </div>
+                  <div className="billMain">
+                    <div className="billTitleRow">
+                      <b>{b.name}</b>
+                      <span
+                        className={
+                          overdue
+                            ? 'billStatus overdueText'
+                            : paid
+                              ? 'billStatus paidText'
+                              : 'billStatus'
+                        }
+                      >
+                        {paid ? 'Paid' : overdue ? 'Overdue' : 'Due'}{' '}
+                        {new Date(`${b.dueDate}T12:00:00`).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </span>
+                    </div>
+                    <strong>{money(b.amount, w?.currency || 'USD')}</strong>
+                    <small>
+                      {w?.name || 'Missing account'} · {b.category} ·{' '}
+                      {b.recurrence === 'once' ? 'One-time' : b.recurrence} · Reminder{' '}
+                      {b.reminderDays === 0 ? 'same day' : `${b.reminderDays}d before`}
+                    </small>
+                  </div>
+                  <div className="billActions">
+                    <button
+                      className={`billPaid ${paid ? 'disabled' : ''}`}
+                      onClick={() => markPaid(b)}
+                      title={
+                        paid
+                          ? b.recurrence === 'once'
+                            ? 'Already paid'
+                            : 'Paid for this billing period'
+                          : 'Mark paid'
+                      }
+                      disabled={paid}
+                    >
+                      <Check />
+                    </button>
+                    {b.recurrence !== 'once' && payable && (
+                      <button
+                        className="billSkip"
+                        onClick={() => setSkipBill(b)}
+                        title="Skip this occurrence"
+                      >
+                        <SkipForward />
+                      </button>
+                    )}
+                    <button onClick={() => openEdit(b)} title="Edit">
+                      <Pencil />
+                    </button>
+                    <button onClick={() => setDeleteBill(b)} title="Delete">
+                      <Trash2 />
+                    </button>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        ) : data.wallets.length ? (
+          <div className="empty">No bills in this view.</div>
+        ) : null}
+        {form && (
+          <div className="overlay" onClick={() => setForm(null)}>
+            <div className="sheet refSheet billSheet" onClick={(e) => e.stopPropagation()}>
+              <div className="sheetTop">
+                <div>
+                  <span className="eyebrow">{form.id ? 'EDIT' : 'NEW'} BILL</span>
+                  <h2>{form.id ? 'Edit Bill' : 'Add Bill'}</h2>
+                </div>
+                <button className="close" onClick={() => setForm(null)}>
+                  <X />
+                </button>
+              </div>
+              <label>
+                Bill name
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Rent, Internet, Electricity..."
+                  autoFocus
+                />
+              </label>
+              <label>
+                Amount
+                <input
+                  className="amountInput"
+                  type="number"
+                  inputMode="decimal"
+                  value={form.amount}
+                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  placeholder="0.00"
+                />
+              </label>
+              <label>
+                Account
+                <select
+                  value={form.walletId}
+                  onChange={(e) => setForm({ ...form, walletId: e.target.value })}
+                >
+                  <option value="">Select Account</option>
+                  {data.wallets.map((w) => (
+                    <option value={w.id} key={w.id}>
+                      {w.name} ({w.currency})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Category
+                <select
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                >
+                  {data.categories.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Due date
+                <input
+                  type="date"
+                  value={form.dueDate}
+                  onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                />
+              </label>
+              <label>
+                Repeat
+                <select
+                  value={form.recurrence}
+                  onChange={(e) =>
+                    setForm({ ...form, recurrence: e.target.value as BillRecurrence })
+                  }
+                >
+                  <option value="once">One-time</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </label>
+              <label>
+                Reminder
+                <select
+                  value={form.reminderDays}
+                  onChange={(e) =>
+                    setForm({ ...form, reminderDays: Number(e.target.value) as BillReminder })
+                  }
+                >
+                  <option value={0}>On due date</option>
+                  <option value={1}>1 day before</option>
+                  <option value={3}>3 days before</option>
+                  <option value={7}>1 week before</option>
+                </select>
+              </label>
+              <label>
+                Note
+                <input
+                  value={form.note}
+                  onChange={(e) => setForm({ ...form, note: e.target.value })}
+                  placeholder="Optional note"
+                />
+              </label>
+              <button className="primary" onClick={save}>
+                {form.id ? 'Save Bill' : 'Create Bill'}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+      {skipBill && (
+        <div className="dialogOverlay">
+          <div
+            className="dialogCard"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="skip-bill-title"
+          >
+            <div className="dialogIcon infoIcon">
+              <SkipForward />
+            </div>
+            <h2 id="skip-bill-title">Skip this payment?</h2>
+            <p>
+              <b>{skipBill.name}</b> will move to its next {skipBill.recurrence} due date. No
+              transaction will be created and your account balance will stay unchanged.
+            </p>
+            <div className="dialogActions">
+              <button
+                className="dialogCancel"
+                disabled={skipping}
+                onClick={() => setSkipBill(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="dialogConfirm billSkipConfirm"
+                disabled={skipping}
+                onClick={confirmSkip}
+              >
+                {skipping ? 'Skipping…' : 'Skip'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteBill && (
+        <div className="dialogOverlay">
+          <div
+            className="dialogCard"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-bill-title"
+          >
+            <div className="dialogIcon dangerIcon">
+              <AlertTriangle />
+            </div>
+            <h2 id="delete-bill-title">Delete bill?</h2>
+            <p>
+              <b>{deleteBill.name}</b> will be permanently removed from Bills. Existing transactions
+              already created from this bill will stay unchanged.
+            </p>
+            <div className="dialogActions">
+              <button
+                className="dialogCancel"
+                disabled={deleting}
+                onClick={() => setDeleteBill(null)}
+              >
+                Cancel
+              </button>
+              <button className="dialogConfirm" disabled={deleting} onClick={confirmRemove}>
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }

@@ -5,7 +5,9 @@ export function registerPwa() {
 
   window.addEventListener('load', async () => {
     try {
-      const registration = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+      const registration = await navigator.serviceWorker.register('./sw.js', {
+        updateViaCache: 'none',
+      })
       let refreshing = false
       let promptedWorker: ServiceWorker | null = null
 
@@ -24,13 +26,15 @@ export function registerPwa() {
         window.dispatchEvent(new CustomEvent('spenza-pwa-update-available', { detail: { apply } }))
       }
 
-      if (registration.waiting && navigator.serviceWorker.controller) announceUpdate(registration.waiting)
+      if (registration.waiting && navigator.serviceWorker.controller)
+        announceUpdate(registration.waiting)
 
       registration.addEventListener('updatefound', () => {
         const worker = registration.installing
         if (!worker) return
         worker.addEventListener('statechange', () => {
-          if (worker.state === 'installed' && navigator.serviceWorker.controller) announceUpdate(worker)
+          if (worker.state === 'installed' && navigator.serviceWorker.controller)
+            announceUpdate(worker)
         })
       })
 

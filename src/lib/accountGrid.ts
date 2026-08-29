@@ -1,103 +1,154 @@
-const SHEET='.sheet.refSheet'
+const SHEET = '.sheet.refSheet'
 
-function transactionSheet(el:Element){return el.querySelector('h2')?.textContent?.includes('Transaction')??false}
-function findAccountSelect(sheet:Element){
- const labels=Array.from(sheet.querySelectorAll<HTMLLabelElement>('label'))
- const accountLabel=labels.find(label=>{
-  const text=label.textContent?.trim()||''
-  return text.startsWith('Account')&&!text.startsWith('Account name')&&!text.startsWith('To Account')&&!!label.querySelector('select')
- })
- return accountLabel?.querySelector<HTMLSelectElement>('select')||null
+function transactionSheet(el: Element) {
+  return el.querySelector('h2')?.textContent?.includes('Transaction') ?? false
 }
-function setSelectValue(select:HTMLSelectElement,value:string){const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value')?.set;setter?.call(select,value);select.dispatchEvent(new Event('change',{bubbles:true}))}
-function optionLabel(option?:HTMLOptionElement|null){if(!option||!option.value)return '';return option.textContent?.trim()||''}
-function syncInput(select:HTMLSelectElement,input?:HTMLInputElement|null){if(input?.isConnected)input.value=optionLabel(select.selectedOptions[0])}
-
-function openAccountPanel(select:HTMLSelectElement,input?:HTMLInputElement|null){
- document.querySelector('.spenzaAccountSheet')?.remove()
- if(input?.isConnected)input.blur()
- const root=document.createElement('div')
- root.className='spenzaAccountSheet'
- const handle=document.createElement('div');handle.className='accountSheetHandle'
- const head=document.createElement('div');head.className='accountSheetHead'
- const left=document.createElement('span')
- const title=document.createElement('b');title.textContent='Account'
- const close=document.createElement('button');close.type='button';close.className='accountSheetClose';close.setAttribute('aria-label','Close account picker');close.textContent='×'
- head.append(left,title,close)
- const options=document.createElement('div');options.className='accountOptions'
- const accountOptions=Array.from(select.options).filter(option=>option.value)
- if(!accountOptions.length){const empty=document.createElement('div');empty.className='accountEmpty';empty.textContent='No accounts available.';options.appendChild(empty)}
- for(const option of accountOptions){
-  const button=document.createElement('button');button.type='button';button.dataset.value=option.value
-  const match=option.textContent?.match(/^(.*?)\s*\((.*?)\)\s*$/)
-  const name=match?.[1]?.trim()||option.textContent?.trim()||'Account'
-  const currency=match?.[2]?.trim()||''
-  const nameEl=document.createElement('span');nameEl.textContent=name
-  button.appendChild(nameEl)
-  if(currency){const currencyEl=document.createElement('small');currencyEl.textContent=currency;button.appendChild(currencyEl)}
-  button.classList.toggle('selected',option.value===select.value)
-  button.addEventListener('click',()=>{setSelectValue(select,option.value);syncInput(select,input);root.remove();document.dispatchEvent(new CustomEvent('spenza-account-selected',{detail:{select}}))})
-  options.appendChild(button)
- }
- close.addEventListener('click',()=>root.remove())
- root.append(handle,head,options)
- document.body.appendChild(root)
+function findAccountSelect(sheet: Element) {
+  const labels = Array.from(sheet.querySelectorAll<HTMLLabelElement>('label'))
+  const accountLabel = labels.find((label) => {
+    const text = label.textContent?.trim() || ''
+    return (
+      text.startsWith('Account') &&
+      !text.startsWith('Account name') &&
+      !text.startsWith('To Account') &&
+      !!label.querySelector('select')
+    )
+  })
+  return accountLabel?.querySelector<HTMLSelectElement>('select') || null
+}
+function setSelectValue(select: HTMLSelectElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set
+  setter?.call(select, value)
+  select.dispatchEvent(new Event('change', { bubbles: true }))
+}
+function optionLabel(option?: HTMLOptionElement | null) {
+  if (!option || !option.value) return ''
+  return option.textContent?.trim() || ''
+}
+function syncInput(select: HTMLSelectElement, input?: HTMLInputElement | null) {
+  if (input?.isConnected) input.value = optionLabel(select.selectedOptions[0])
 }
 
-function prepareSheet(sheet:Element){
- if(!transactionSheet(sheet))return null
- const select=findAccountSelect(sheet)
- if(!select)return null
- let input=sheet.querySelector<HTMLInputElement>('input.spenzaAccountInput')
- if(!input){
-  select.dataset.accountPanel='1'
-  const label=select.closest('label')
-  if(!label)return {select,input:null}
-  label.classList.add('spenzaAccountField')
-  input=document.createElement('input')
-  input.type='text'
-  input.className='spenzaAccountInput'
-  input.readOnly=true
-  input.inputMode='none'
-  input.placeholder='Select Account'
-  input.setAttribute('aria-label','Select Account')
-  syncInput(select,input)
-  select.insertAdjacentElement('beforebegin',input)
-  const open=()=>openAccountPanel(select,input)
-  input.addEventListener('click',open)
-  input.addEventListener('focus',()=>{input?.blur();open()})
-  select.addEventListener('change',()=>syncInput(select,input))
- }else{
-  select.dataset.accountPanel='1'
-  syncInput(select,input)
- }
- return {select,input}
-}
-
-function prepare(){document.querySelectorAll(SHEET).forEach(sheet=>{prepareSheet(sheet)})}
-
-export function openAccountPickerForSheet(sheet:Element){
- if(!transactionSheet(sheet))return false
- const select=findAccountSelect(sheet)
- if(!select)return false
- const prepared=prepareSheet(sheet)
- const input=prepared?.input||sheet.querySelector<HTMLInputElement>('input.spenzaAccountInput')
- const anchor=input?.isConnected?input:select.closest('label')||select
- anchor.scrollIntoView({behavior:'smooth',block:'center'})
- openAccountPanel(select,input)
- return true
-}
-
-export function initAccountGrid(){
- new MutationObserver(prepare).observe(document.body,{childList:true,subtree:true});prepare()
- document.addEventListener('spenza-open-account-picker',(event)=>{
-  const detail=(event as CustomEvent).detail||{}
-  const requestedInput=detail.input as HTMLInputElement|undefined
-  if(requestedInput?.isConnected){
-   const sheet=requestedInput.closest(SHEET)
-   if(sheet&&openAccountPickerForSheet(sheet))return
+function openAccountPanel(select: HTMLSelectElement, input?: HTMLInputElement | null) {
+  document.querySelector('.spenzaAccountSheet')?.remove()
+  if (input?.isConnected) input.blur()
+  const root = document.createElement('div')
+  root.className = 'spenzaAccountSheet'
+  const handle = document.createElement('div')
+  handle.className = 'accountSheetHandle'
+  const head = document.createElement('div')
+  head.className = 'accountSheetHead'
+  const left = document.createElement('span')
+  const title = document.createElement('b')
+  title.textContent = 'Account'
+  const close = document.createElement('button')
+  close.type = 'button'
+  close.className = 'accountSheetClose'
+  close.setAttribute('aria-label', 'Close account picker')
+  close.textContent = '×'
+  head.append(left, title, close)
+  const options = document.createElement('div')
+  options.className = 'accountOptions'
+  const accountOptions = Array.from(select.options).filter((option) => option.value)
+  if (!accountOptions.length) {
+    const empty = document.createElement('div')
+    empty.className = 'accountEmpty'
+    empty.textContent = 'No accounts available.'
+    options.appendChild(empty)
   }
-  const sheet=(detail.sheet as Element|undefined)||Array.from(document.querySelectorAll(SHEET)).find(transactionSheet)
-  if(sheet)openAccountPickerForSheet(sheet)
- })
+  for (const option of accountOptions) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.dataset.value = option.value
+    const match = option.textContent?.match(/^(.*?)\s*\((.*?)\)\s*$/)
+    const name = match?.[1]?.trim() || option.textContent?.trim() || 'Account'
+    const currency = match?.[2]?.trim() || ''
+    const nameEl = document.createElement('span')
+    nameEl.textContent = name
+    button.appendChild(nameEl)
+    if (currency) {
+      const currencyEl = document.createElement('small')
+      currencyEl.textContent = currency
+      button.appendChild(currencyEl)
+    }
+    button.classList.toggle('selected', option.value === select.value)
+    button.addEventListener('click', () => {
+      setSelectValue(select, option.value)
+      syncInput(select, input)
+      root.remove()
+      document.dispatchEvent(new CustomEvent('spenza-account-selected', { detail: { select } }))
+    })
+    options.appendChild(button)
+  }
+  close.addEventListener('click', () => root.remove())
+  root.append(handle, head, options)
+  document.body.appendChild(root)
+}
+
+function prepareSheet(sheet: Element) {
+  if (!transactionSheet(sheet)) return null
+  const select = findAccountSelect(sheet)
+  if (!select) return null
+  let input = sheet.querySelector<HTMLInputElement>('input.spenzaAccountInput')
+  if (!input) {
+    select.dataset.accountPanel = '1'
+    const label = select.closest('label')
+    if (!label) return { select, input: null }
+    label.classList.add('spenzaAccountField')
+    input = document.createElement('input')
+    input.type = 'text'
+    input.className = 'spenzaAccountInput'
+    input.readOnly = true
+    input.inputMode = 'none'
+    input.placeholder = 'Select Account'
+    input.setAttribute('aria-label', 'Select Account')
+    syncInput(select, input)
+    select.insertAdjacentElement('beforebegin', input)
+    const open = () => openAccountPanel(select, input)
+    input.addEventListener('click', open)
+    input.addEventListener('focus', () => {
+      input?.blur()
+      open()
+    })
+    select.addEventListener('change', () => syncInput(select, input))
+  } else {
+    select.dataset.accountPanel = '1'
+    syncInput(select, input)
+  }
+  return { select, input }
+}
+
+function prepare() {
+  document.querySelectorAll(SHEET).forEach((sheet) => {
+    prepareSheet(sheet)
+  })
+}
+
+export function openAccountPickerForSheet(sheet: Element) {
+  if (!transactionSheet(sheet)) return false
+  const select = findAccountSelect(sheet)
+  if (!select) return false
+  const prepared = prepareSheet(sheet)
+  const input = prepared?.input || sheet.querySelector<HTMLInputElement>('input.spenzaAccountInput')
+  const anchor = input?.isConnected ? input : select.closest('label') || select
+  anchor.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  openAccountPanel(select, input)
+  return true
+}
+
+export function initAccountGrid() {
+  new MutationObserver(prepare).observe(document.body, { childList: true, subtree: true })
+  prepare()
+  document.addEventListener('spenza-open-account-picker', (event) => {
+    const detail = (event as CustomEvent).detail || {}
+    const requestedInput = detail.input as HTMLInputElement | undefined
+    if (requestedInput?.isConnected) {
+      const sheet = requestedInput.closest(SHEET)
+      if (sheet && openAccountPickerForSheet(sheet)) return
+    }
+    const sheet =
+      (detail.sheet as Element | undefined) ||
+      Array.from(document.querySelectorAll(SHEET)).find(transactionSheet)
+    if (sheet) openAccountPickerForSheet(sheet)
+  })
 }

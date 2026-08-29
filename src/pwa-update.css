@@ -1,3 +1,124 @@
-.pwaUpdateBanner{position:fixed;z-index:100000;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(92vw,430px);display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 13px;border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:16px;background:color-mix(in srgb,var(--surface) 92%,transparent);box-shadow:0 10px 30px rgba(0,0,0,.24);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}.pwaUpdateBanner>div{display:flex;min-width:0;flex-direction:column;gap:3px}.pwaUpdateBanner b{font-size:13px;color:var(--text)}.pwaUpdateBanner span{font-size:10px;line-height:1.35;color:var(--muted)}.pwaUpdateBanner button{flex:0 0 auto;height:38px;padding:0 14px;border:0;border-radius:12px;background:var(--accent);color:#061b19;font-size:11px;font-weight:800}
-.pwaUpdateSettingsTitle{margin-top:18px}.pwaUpdateSettings{padding:16px;display:flex;flex-direction:column;gap:14px;border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 7%,var(--surface)),var(--surface));box-shadow:0 8px 24px rgba(0,0,0,.06)}.pwaUpdateSettingsCopy{display:flex;align-items:flex-start;gap:12px}.pwaUpdateSettingsIcon{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border-radius:14px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 24%,transparent)}.pwaUpdateSettingsCopy>div:last-child{display:flex;flex-direction:column;gap:4px;min-width:0}.pwaUpdateSettingsCopy span{font-size:13px;font-weight:800;color:var(--text)}.pwaUpdateSettingsCopy small{font-size:10px;line-height:1.45;color:var(--muted)}.pwaUpdateSettingsButton{width:100%;height:44px;border:0;border-radius:13px;background:var(--accent);color:#071b19;display:flex;align-items:center;justify-content:center;gap:7px;font-size:11px;font-weight:850;box-shadow:0 8px 20px color-mix(in srgb,var(--accent) 22%,transparent)}
-:root[data-theme='dark'] .pwaUpdateSettings{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 10%,var(--surface)),var(--surface));border-color:color-mix(in srgb,var(--accent) 34%,var(--line));box-shadow:0 10px 28px rgba(0,0,0,.22)}:root[data-theme='dark'] .pwaUpdateSettingsIcon{background:color-mix(in srgb,var(--accent) 18%,transparent);border-color:color-mix(in srgb,var(--accent) 32%,transparent)}:root[data-theme='dark'] .pwaUpdateSettingsButton{color:#041714}
+.pwaUpdateBanner {
+  position: fixed;
+  z-index: 100000;
+  left: 50%;
+  bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: min(92vw, 430px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 13px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.pwaUpdateBanner > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.pwaUpdateBanner b {
+  font-size: 13px;
+  color: var(--text);
+}
+.pwaUpdateBanner span {
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.pwaUpdateBanner button {
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #061b19;
+  font-size: 11px;
+  font-weight: 800;
+}
+.pwaUpdateSettingsTitle {
+  margin-top: 18px;
+}
+.pwaUpdateSettings {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 7%, var(--surface)),
+    var(--surface)
+  );
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+.pwaUpdateSettingsCopy {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.pwaUpdateSettingsIcon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+}
+.pwaUpdateSettingsCopy > div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.pwaUpdateSettingsCopy span {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+}
+.pwaUpdateSettingsCopy small {
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.pwaUpdateSettingsButton {
+  width: 100%;
+  height: 44px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--accent);
+  color: #071b19;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 850;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+:root[data-theme='dark'] .pwaUpdateSettings {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 10%, var(--surface)),
+    var(--surface)
+  );
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+}
+:root[data-theme='dark'] .pwaUpdateSettingsIcon {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+}
+:root[data-theme='dark'] .pwaUpdateSettingsButton {
+  color: #041714;
+}

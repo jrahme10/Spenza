@@ -1,1 +1,188 @@
-.billsPage{padding-bottom:28px}.scheduledInfo{display:flex;align-items:flex-start;gap:10px;margin:0 0 12px;padding:12px 13px;border:1px solid color-mix(in srgb,var(--accent) 25%,var(--line));border-radius:15px;background:color-mix(in srgb,var(--accent) 7%,var(--surface));color:var(--text)}.scheduledInfo>svg{width:18px;height:18px;flex:0 0 auto;color:var(--accent);margin-top:1px}.scheduledInfo>div{display:flex;flex-direction:column;gap:3px}.scheduledInfo b{font-size:11px}.scheduledInfo span{font-size:8px;line-height:1.45;color:var(--muted)}.scheduledInfo strong{color:var(--accent)}.billsFilters{max-width:280px;margin-left:auto!important;margin-right:auto!important}.billsList{display:flex;flex-direction:column;gap:10px}.billCard{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:11px;padding:13px;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:0 8px 20px rgba(0,0,0,.05)}.billCard.overdue{border-color:rgba(157,42,47,.42);background:linear-gradient(135deg,rgba(126,31,36,.12),var(--surface))}.billCard.paid{opacity:.72}.billIcon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:rgba(24,223,177,.10);color:var(--accent)}.billCard.overdue .billIcon{background:rgba(126,31,36,.16);color:#c85b60}.billCard.paid .billIcon{background:rgba(24,223,177,.07);color:var(--muted)}.billIcon svg{width:19px}.billMain{min-width:0}.billTitleRow{display:flex;align-items:center;justify-content:space-between;gap:8px}.billTitleRow b{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.billStatus{font-size:8px;color:var(--accent);white-space:nowrap}.overdueText{color:#c85b60}.paidText{color:var(--muted)}.billMain strong{display:block;font-size:16px;margin:6px 0 4px;color:var(--text)}.billMain small{display:block;font-size:8px;color:var(--muted);line-height:1.4}.billActions{display:flex;gap:3px;align-items:center}.billActions button{width:29px;height:29px;border:0;border-radius:9px;background:transparent;color:var(--muted);display:grid;place-items:center}.billActions button svg{width:14px}.billActions .billPaid{background:rgba(24,223,177,.11);color:var(--accent)}.billActions .billSkip{background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--muted)}.billActions .billSkip:hover{color:var(--accent)}.billActions .billPaid.disabled,.billActions .billPaid:disabled{background:var(--surface2);color:var(--muted);cursor:not-allowed;opacity:.7}.billSkipConfirm{background:linear-gradient(135deg,#18dfb1,#13b9ef)!important;color:#041716!important}.billSheet{max-height:92vh;overflow-y:auto}.billSheet .amountInput{color:var(--accent)!important}@media(max-width:400px){.billCard{grid-template-columns:38px minmax(0,1fr)}.billIcon{width:38px;height:38px}.billActions{grid-column:2;justify-content:flex-end}.billTitleRow{align-items:flex-start;flex-direction:column;gap:2px}}
+.billsPage {
+  padding-bottom: 28px;
+}
+.scheduledInfo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px 13px;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  color: var(--text);
+}
+.scheduledInfo > svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: var(--accent);
+  margin-top: 1px;
+}
+.scheduledInfo > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.scheduledInfo b {
+  font-size: 11px;
+}
+.scheduledInfo span {
+  font-size: 8px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.scheduledInfo strong {
+  color: var(--accent);
+}
+.billsFilters {
+  max-width: 280px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.billsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.billCard {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+}
+.billCard.overdue {
+  border-color: rgba(157, 42, 47, 0.42);
+  background: linear-gradient(135deg, rgba(126, 31, 36, 0.12), var(--surface));
+}
+.billCard.paid {
+  opacity: 0.72;
+}
+.billIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: rgba(24, 223, 177, 0.1);
+  color: var(--accent);
+}
+.billCard.overdue .billIcon {
+  background: rgba(126, 31, 36, 0.16);
+  color: #c85b60;
+}
+.billCard.paid .billIcon {
+  background: rgba(24, 223, 177, 0.07);
+  color: var(--muted);
+}
+.billIcon svg {
+  width: 19px;
+}
+.billMain {
+  min-width: 0;
+}
+.billTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.billTitleRow b {
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.billStatus {
+  font-size: 8px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.overdueText {
+  color: #c85b60;
+}
+.paidText {
+  color: var(--muted);
+}
+.billMain strong {
+  display: block;
+  font-size: 16px;
+  margin: 6px 0 4px;
+  color: var(--text);
+}
+.billMain small {
+  display: block;
+  font-size: 8px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.billActions {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.billActions button {
+  width: 29px;
+  height: 29px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+.billActions button svg {
+  width: 14px;
+}
+.billActions .billPaid {
+  background: rgba(24, 223, 177, 0.11);
+  color: var(--accent);
+}
+.billActions .billSkip {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--muted);
+}
+.billActions .billSkip:hover {
+  color: var(--accent);
+}
+.billActions .billPaid.disabled,
+.billActions .billPaid:disabled {
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.billSkipConfirm {
+  background: linear-gradient(135deg, #18dfb1, #13b9ef) !important;
+  color: #041716 !important;
+}
+.billSheet {
+  max-height: 92vh;
+  overflow-y: auto;
+}
+.billSheet .amountInput {
+  color: var(--accent) !important;
+}
+@media (max-width: 400px) {
+  .billCard {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+  .billIcon {
+    width: 38px;
+    height: 38px;
+  }
+  .billActions {
+    grid-column: 2;
+    justify-content: flex-end;
+  }
+  .billTitleRow {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+}

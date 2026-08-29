@@ -6,7 +6,12 @@ import './ReceiptScanner.css'
 
 type Props = {
   preferredCurrency?: Currency
-  onResult: (result: { amount: number; currency?: Currency; merchant?: string; rawText: string }) => void
+  onResult: (result: {
+    amount: number
+    currency?: Currency
+    merchant?: string
+    rawText: string
+  }) => void
 }
 
 function parseNumber(raw: string): number | null {
@@ -33,12 +38,16 @@ function parseNumber(raw: string): number | null {
 const amountToken = '[0-9]{1,3}(?:[.,\\s][0-9]{3})*(?:[.,][0-9]{2})|[0-9]+(?:[.,][0-9]{2})?'
 
 function currencyAmounts(line: string, currency: Currency): number[] {
-  const patterns = currency === 'USD'
-    ? [new RegExp(`(?:US\\$|USD|\\$)\\s*(${amountToken})`, 'gi'), new RegExp(`(${amountToken})\\s*(?:USD|US\\$)`, 'gi')]
-    : [
-        new RegExp(`(?:LBP|L\\.?L\\.?|LL|ل\\.?ل\\.?)\\s*(${amountToken})`, 'gi'),
-        new RegExp(`(${amountToken})\\s*(?:LBP|L\\.?L\\.?|LL|ل\\.?ل\\.?)`, 'gi'),
-      ]
+  const patterns =
+    currency === 'USD'
+      ? [
+          new RegExp(`(?:US\\$|USD|\\$)\\s*(${amountToken})`, 'gi'),
+          new RegExp(`(${amountToken})\\s*(?:USD|US\\$)`, 'gi'),
+        ]
+      : [
+          new RegExp(`(?:LBP|L\\.?L\\.?|LL|ل\\.?ل\\.?)\\s*(${amountToken})`, 'gi'),
+          new RegExp(`(${amountToken})\\s*(?:LBP|L\\.?L\\.?|LL|ل\\.?ل\\.?)`, 'gi'),
+        ]
   const values: number[] = []
   for (const pattern of patterns) {
     for (const match of line.matchAll(pattern)) {
@@ -50,20 +59,34 @@ function currencyAmounts(line: string, currency: Currency): number[] {
 }
 
 function findCurrencyTotals(text: string): Partial<Record<Currency, number>> {
-  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
-  const priority = lines.filter(line => /\b(grand\s*total|total\s*due|amount\s*due|balance\s*due|net\s*total|total)\b/i.test(line) && !/subtotal|tax|vat|change|tender/i.test(line))
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+  const priority = lines.filter(
+    (line) =>
+      /\b(grand\s*total|total\s*due|amount\s*due|balance\s*due|net\s*total|total)\b/i.test(line) &&
+      !/subtotal|tax|vat|change|tender/i.test(line),
+  )
   const source = priority.length ? priority : lines
   const totals: Partial<Record<Currency, number>> = {}
   for (const currency of ['USD', 'LBP'] as Currency[]) {
-    const candidates = source.flatMap(line => currencyAmounts(line, currency))
+    const candidates = source.flatMap((line) => currencyAmounts(line, currency))
     if (candidates.length) totals[currency] = Math.max(...candidates)
   }
   return totals
 }
 
 function findUnlabelledTotal(text: string): number | null {
-  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
-  const priority = lines.filter(line => /\b(grand\s*total|total\s*due|amount\s*due|balance\s*due|net\s*total|total)\b/i.test(line) && !/subtotal|tax|vat|change|tender/i.test(line))
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+  const priority = lines.filter(
+    (line) =>
+      /\b(grand\s*total|total\s*due|amount\s*due|balance\s*due|net\s*total|total)\b/i.test(line) &&
+      !/subtotal|tax|vat|change|tender/i.test(line),
+  )
   const values: number[] = []
   for (const line of priority) {
     for (const match of line.matchAll(new RegExp(`(${amountToken})`, 'g'))) {
@@ -75,15 +98,25 @@ function findUnlabelledTotal(text: string): number | null {
 }
 
 function findMerchant(text: string): string | undefined {
-  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
-  return lines.find(line => /[A-Za-z]{3}/.test(line) && line.length >= 3 && line.length <= 48 && !/receipt|invoice|tax|vat|date|time|tel|phone|total/i.test(line))
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+  return lines.find(
+    (line) =>
+      /[A-Za-z]{3}/.test(line) &&
+      line.length >= 3 &&
+      line.length <= 48 &&
+      !/receipt|invoice|tax|vat|date|time|tel|phone|total/i.test(line),
+  )
 }
 
 function selectedWalletCurrency(): Currency | undefined {
   const sheet = document.querySelector('.sheet')
   const selects = sheet?.querySelectorAll('select')
   if (!selects?.length) return undefined
-  const text = (selects[0] as HTMLSelectElement).selectedOptions?.[0]?.textContent?.toUpperCase() || ''
+  const text =
+    (selects[0] as HTMLSelectElement).selectedOptions?.[0]?.textContent?.toUpperCase() || ''
   if (text.includes('(USD)') || text.includes('USD')) return 'USD'
   if (text.includes('(LBP)') || text.includes('LBP')) return 'LBP'
   return undefined
@@ -91,7 +124,7 @@ function selectedWalletCurrency(): Currency | undefined {
 
 export default function ReceiptScanner({ preferredCurrency, onResult }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [status, setStatus] = useState<'idle'|'scanning'|'done'|'error'>('idle')
+  const [status, setStatus] = useState<'idle' | 'scanning' | 'done' | 'error'>('idle')
   const [progress, setProgress] = useState(0)
   const [message, setMessage] = useState('')
 
@@ -103,8 +136,9 @@ export default function ReceiptScanner({ preferredCurrency, onResult }: Props) {
     let worker: Awaited<ReturnType<typeof createWorker>> | null = null
     try {
       worker = await createWorker('eng', 1, {
-        logger: event => {
-          if (event.status === 'recognizing text') setProgress(Math.round((event.progress || 0) * 100))
+        logger: (event) => {
+          if (event.status === 'recognizing text')
+            setProgress(Math.round((event.progress || 0) * 100))
         },
       })
       const result = await worker.recognize(file)
@@ -140,7 +174,9 @@ export default function ReceiptScanner({ preferredCurrency, onResult }: Props) {
 
       if (!total) {
         setStatus('error')
-        setMessage('I could not confidently find the total. Try a clearer photo or enter the amount manually.')
+        setMessage(
+          'I could not confidently find the total. Try a clearer photo or enter the amount manually.',
+        )
         return
       }
 
@@ -160,13 +196,42 @@ export default function ReceiptScanner({ preferredCurrency, onResult }: Props) {
     }
   }
 
-  return <div className="receiptScanner">
-    <input ref={inputRef} className="receiptInput" type="file" accept="image/*" capture="environment" onChange={e => scan(e.target.files?.[0])}/>
-    <button className="receiptButton" type="button" disabled={status==='scanning'} onClick={() => inputRef.current?.click()}>
-      <span className="receiptIcon">{status==='scanning'?<LoaderCircle className="spin"/>:status==='done'?<CheckCircle2/>:<Camera/>}</span>
-      <span><b>{status==='scanning'?'Scanning receipt…':'Scan receipt'}</b><small>{status==='scanning'?`${progress}% complete`:'Use the total matching the selected wallet'}</small></span>
-      <ReceiptText className="receiptSideIcon"/>
-    </button>
-    {status!=='idle'&&<div className={`receiptStatus ${status}`}>{message}</div>}
-  </div>
+  return (
+    <div className="receiptScanner">
+      <input
+        ref={inputRef}
+        className="receiptInput"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={(e) => scan(e.target.files?.[0])}
+      />
+      <button
+        className="receiptButton"
+        type="button"
+        disabled={status === 'scanning'}
+        onClick={() => inputRef.current?.click()}
+      >
+        <span className="receiptIcon">
+          {status === 'scanning' ? (
+            <LoaderCircle className="spin" />
+          ) : status === 'done' ? (
+            <CheckCircle2 />
+          ) : (
+            <Camera />
+          )}
+        </span>
+        <span>
+          <b>{status === 'scanning' ? 'Scanning receipt…' : 'Scan receipt'}</b>
+          <small>
+            {status === 'scanning'
+              ? `${progress}% complete`
+              : 'Use the total matching the selected wallet'}
+          </small>
+        </span>
+        <ReceiptText className="receiptSideIcon" />
+      </button>
+      {status !== 'idle' && <div className={`receiptStatus ${status}`}>{message}</div>}
+    </div>
+  )
 }

@@ -1,32 +1,237 @@
-.sheet:not(.walletSheet) .formGrid:last-of-type{grid-template-columns:1fr;gap:0;margin-top:4px}.sheet:not(.walletSheet) .formGrid:last-of-type label{margin:8px 0 10px}.sheet:not(.walletSheet) .formGrid:last-of-type label:first-child{position:relative}.sheet:not(.walletSheet) .formGrid:last-of-type label:first-child input[type="date"]{min-height:50px;padding:14px 15px;background:#fff;border:1px solid #ddd9d0;border-radius:15px;color:#2b302d;box-shadow:0 1px 0 rgba(255,255,255,.8) inset}.sheet:not(.walletSheet) .formGrid:last-of-type label:first-child input[type="date"]:focus{border-color:#80968c;box-shadow:0 0 0 3px rgba(67,94,82,.09)}.sheet:not(.walletSheet) .formGrid:last-of-type label:last-child input{min-height:76px;padding:14px 15px 40px;line-height:1.45;background:#fffdf9;border:1px solid #ddd9d0;border-radius:15px}.sheet:not(.walletSheet) .formGrid:last-of-type label:last-child input:focus{border-color:#80968c;box-shadow:0 0 0 3px rgba(67,94,82,.09)}.sheet:not(.walletSheet) .formGrid:last-of-type label:last-child{position:relative}.sheet:not(.walletSheet) .formGrid:last-of-type label:last-child:after{content:'Optional note';position:absolute;right:12px;bottom:11px;font-size:9px;font-weight:600;letter-spacing:.04em;color:#aaa59b;pointer-events:none}.sheet:not(.walletSheet) .primary{margin-top:14px}@media(max-width:380px){.sheet:not(.walletSheet) .formGrid:last-of-type label:last-child input{min-height:70px}}
+.sheet:not(.walletSheet) .formGrid:last-of-type {
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-top: 4px;
+}
+.sheet:not(.walletSheet) .formGrid:last-of-type label {
+  margin: 8px 0 10px;
+}
+.sheet:not(.walletSheet) .formGrid:last-of-type label:first-child {
+  position: relative;
+}
+.sheet:not(.walletSheet) .formGrid:last-of-type label:first-child input[type='date'] {
+  min-height: 50px;
+  padding: 14px 15px;
+  background: #fff;
+  border: 1px solid #ddd9d0;
+  border-radius: 15px;
+  color: #2b302d;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+}
+.sheet:not(.walletSheet) .formGrid:last-of-type label:first-child input[type='date']:focus {
+  border-color: #80968c;
+  box-shadow: 0 0 0 3px rgba(67, 94, 82, 0.09);
+}
+.sheet:not(.walletSheet) .formGrid:last-of-type label:last-child input {
+  min-height: 76px;
+  padding: 14px 15px 40px;
+  line-height: 1.45;
+  background: #fffdf9;
+  border: 1px solid #ddd9d0;
+  border-radius: 15px;
+}
+.sheet:not(.walletSheet) .formGrid:last-of-type label:last-child input:focus {
+  border-color: #80968c;
+  box-shadow: 0 0 0 3px rgba(67, 94, 82, 0.09);
+}
+.sheet:not(.walletSheet) .formGrid:last-of-type label:last-child {
+  position: relative;
+}
+.sheet:not(.walletSheet) .formGrid:last-of-type label:last-child:after {
+  content: 'Optional note';
+  position: absolute;
+  right: 12px;
+  bottom: 11px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #aaa59b;
+  pointer-events: none;
+}
+.sheet:not(.walletSheet) .primary {
+  margin-top: 14px;
+}
+@media (max-width: 380px) {
+  .sheet:not(.walletSheet) .formGrid:last-of-type label:last-child input {
+    min-height: 70px;
+  }
+}
 
 /* Spenza amount keypad with inline calculator and currency conversion */
-.spenzaAmountKeypad{position:fixed;left:0;right:0;bottom:0;z-index:10000;padding:8px 14px calc(14px + env(safe-area-inset-bottom));background:var(--surface,#0d1b2a);border-top:1px solid var(--line,#263746);border-radius:22px 22px 0 0;box-shadow:0 -12px 35px rgba(0,0,0,.18)}
-.amountKeypadHandle{width:38px;height:4px;margin:0 auto 10px;border-radius:3px;background:var(--line,#52606d)}
-.amountCurrencyRow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 4px 8px;font-size:11px;color:var(--muted,#93a4b6)}
-.amountCurrencyToggle{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;background:var(--surface2,#111f31);border:1px solid var(--line,#263746);border-radius:999px}
-.amountCurrencyToggle button{border:0;border-radius:999px;padding:7px 11px;background:transparent;color:var(--muted,#93a4b6);font-size:11px;font-weight:800}
-.amountCurrencyToggle button.selected{background:var(--accent,#19dfbd);color:#05251f}
-.amountKeypadDisplay{min-height:72px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;padding:0 8px 8px;overflow:hidden;color:inherit}
-.amountExpression{max-width:100%;font-size:28px;font-weight:750;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.amountEquationResult{min-height:18px;margin-top:2px;font-size:13px;font-weight:700;color:var(--accent,#19dfbd)}
-.amountEquationResult.error{color:#ff707b}
-.amountCurrencyConversion{min-height:16px;margin-top:2px;font-size:10px;font-weight:650;color:var(--muted,#93a4b6)}
-.amountKeypadGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.amountKeypadGrid button{height:46px;border:1px solid var(--line,#263746);border-radius:13px;background:var(--surface2,#111f31);color:var(--text,#f7fbff);font-size:18px;font-weight:650;display:grid;place-items:center}
-.amountKeypadGrid button.amountOperator{color:var(--accent,#19dfbd);font-weight:800}
-.amountKeypadGrid button.amountEquals{background:color-mix(in srgb,var(--accent,#19dfbd) 18%,var(--surface2,#111f31));color:var(--accent,#19dfbd);font-weight:850}
-.amountKeypadGrid button:active{transform:scale(.97);background:var(--surface3,#15263a)}
-.amountKeypadOk{width:100%;height:50px;margin-top:10px;border:0;border-radius:15px;background:var(--accent,#19dfbd);color:#05251f;font-size:16px;font-weight:800}
-.amountInput[readonly]{cursor:pointer;caret-color:transparent}
-:root[data-theme='light'] .spenzaAmountKeypad{background:#f7fafb;border-top-color:#e4ebef;box-shadow:0 -10px 30px rgba(39,63,78,.12)}
-:root[data-theme='light'] .amountKeypadHandle{background:#dce5ea}
-:root[data-theme='light'] .amountKeypadDisplay{color:#152231}
-:root[data-theme='light'] .amountCurrencyToggle{background:#edf4f6;border-color:#dfe9ed}
-:root[data-theme='light'] .amountCurrencyToggle button{color:#607786}
-:root[data-theme='light'] .amountCurrencyToggle button.selected{color:#07352e}
-:root[data-theme='light'] .amountKeypadGrid button{background:#edf4f6!important;border-color:#dfe9ed!important;color:#203443!important;box-shadow:0 2px 7px rgba(42,72,88,.04)}
-:root[data-theme='light'] .amountKeypadGrid button.amountOperator,:root[data-theme='light'] .amountKeypadGrid button.amountEquals{color:var(--accent,#11977e)!important}
-:root[data-theme='light'] .amountKeypadGrid button:active{background:#dcebed!important}
-:root[data-theme='light'] .amountKeypadOk{background:var(--accent,#18dfb1);color:#07352e}
-@media(min-width:600px){.spenzaAmountKeypad{left:50%;right:auto;width:min(430px,100%);transform:translateX(-50%);border-radius:22px 22px 0 0}}
+.spenzaAmountKeypad {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  padding: 8px 14px calc(14px + env(safe-area-inset-bottom));
+  background: var(--surface, #0d1b2a);
+  border-top: 1px solid var(--line, #263746);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -12px 35px rgba(0, 0, 0, 0.18);
+}
+.amountKeypadHandle {
+  width: 38px;
+  height: 4px;
+  margin: 0 auto 10px;
+  border-radius: 3px;
+  background: var(--line, #52606d);
+}
+.amountCurrencyRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 4px 8px;
+  font-size: 11px;
+  color: var(--muted, #93a4b6);
+}
+.amountCurrencyToggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  background: var(--surface2, #111f31);
+  border: 1px solid var(--line, #263746);
+  border-radius: 999px;
+}
+.amountCurrencyToggle button {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: transparent;
+  color: var(--muted, #93a4b6);
+  font-size: 11px;
+  font-weight: 800;
+}
+.amountCurrencyToggle button.selected {
+  background: var(--accent, #19dfbd);
+  color: #05251f;
+}
+.amountKeypadDisplay {
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 8px 8px;
+  overflow: hidden;
+  color: inherit;
+}
+.amountExpression {
+  max-width: 100%;
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.amountEquationResult {
+  min-height: 18px;
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent, #19dfbd);
+}
+.amountEquationResult.error {
+  color: #ff707b;
+}
+.amountCurrencyConversion {
+  min-height: 16px;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--muted, #93a4b6);
+}
+.amountKeypadGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.amountKeypadGrid button {
+  height: 46px;
+  border: 1px solid var(--line, #263746);
+  border-radius: 13px;
+  background: var(--surface2, #111f31);
+  color: var(--text, #f7fbff);
+  font-size: 18px;
+  font-weight: 650;
+  display: grid;
+  place-items: center;
+}
+.amountKeypadGrid button.amountOperator {
+  color: var(--accent, #19dfbd);
+  font-weight: 800;
+}
+.amountKeypadGrid button.amountEquals {
+  background: color-mix(in srgb, var(--accent, #19dfbd) 18%, var(--surface2, #111f31));
+  color: var(--accent, #19dfbd);
+  font-weight: 850;
+}
+.amountKeypadGrid button:active {
+  transform: scale(0.97);
+  background: var(--surface3, #15263a);
+}
+.amountKeypadOk {
+  width: 100%;
+  height: 50px;
+  margin-top: 10px;
+  border: 0;
+  border-radius: 15px;
+  background: var(--accent, #19dfbd);
+  color: #05251f;
+  font-size: 16px;
+  font-weight: 800;
+}
+.amountInput[readonly] {
+  cursor: pointer;
+  caret-color: transparent;
+}
+:root[data-theme='light'] .spenzaAmountKeypad {
+  background: #f7fafb;
+  border-top-color: #e4ebef;
+  box-shadow: 0 -10px 30px rgba(39, 63, 78, 0.12);
+}
+:root[data-theme='light'] .amountKeypadHandle {
+  background: #dce5ea;
+}
+:root[data-theme='light'] .amountKeypadDisplay {
+  color: #152231;
+}
+:root[data-theme='light'] .amountCurrencyToggle {
+  background: #edf4f6;
+  border-color: #dfe9ed;
+}
+:root[data-theme='light'] .amountCurrencyToggle button {
+  color: #607786;
+}
+:root[data-theme='light'] .amountCurrencyToggle button.selected {
+  color: #07352e;
+}
+:root[data-theme='light'] .amountKeypadGrid button {
+  background: #edf4f6 !important;
+  border-color: #dfe9ed !important;
+  color: #203443 !important;
+  box-shadow: 0 2px 7px rgba(42, 72, 88, 0.04);
+}
+:root[data-theme='light'] .amountKeypadGrid button.amountOperator,
+:root[data-theme='light'] .amountKeypadGrid button.amountEquals {
+  color: var(--accent, #11977e) !important;
+}
+:root[data-theme='light'] .amountKeypadGrid button:active {
+  background: #dcebed !important;
+}
+:root[data-theme='light'] .amountKeypadOk {
+  background: var(--accent, #18dfb1);
+  color: #07352e;
+}
+@media (min-width: 600px) {
+  .spenzaAmountKeypad {
+    left: 50%;
+    right: auto;
+    width: min(430px, 100%);
+    transform: translateX(-50%);
+    border-radius: 22px 22px 0 0;
+  }
+}

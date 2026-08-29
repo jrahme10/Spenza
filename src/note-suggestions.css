@@ -1,5 +1,46 @@
-.noteSuggestionField{position:relative;z-index:6}
-.noteSuggestionsDropdown{position:absolute;left:0;right:0;top:calc(100% - 2px);z-index:40;display:flex;flex-direction:column;gap:0;max-height:220px;overflow:auto;padding:6px;background:var(--surface,#fff);border:1px solid var(--border,rgba(127,127,127,.22));border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.16)}
-.noteSuggestionOption{width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:10px 12px;border-radius:10px;font:inherit;line-height:1.25;cursor:pointer}
-.noteSuggestionOption:hover,.noteSuggestionOption:focus{background:var(--surface3,rgba(127,127,127,.12));outline:none}
-@media (max-width:480px){.noteSuggestionsDropdown{max-height:190px}.noteSuggestionOption{padding:11px 10px}}
+.noteSuggestionField {
+  position: relative;
+  z-index: 6;
+}
+.noteSuggestionsDropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% - 2px);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 220px;
+  overflow: auto;
+  padding: 6px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.22));
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16);
+}
+.noteSuggestionOption {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font: inherit;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.noteSuggestionOption:hover,
+.noteSuggestionOption:focus {
+  background: var(--surface3, rgba(127, 127, 127, 0.12));
+  outline: none;
+}
+@media (max-width: 480px) {
+  .noteSuggestionsDropdown {
+    max-height: 190px;
+  }
+  .noteSuggestionOption {
+    padding: 11px 10px;
+  }
+}

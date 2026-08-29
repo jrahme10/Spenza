@@ -16,7 +16,7 @@ const periodOptions: Array<{ value: Exclude<HomePeriod, 'custom'>; label: string
 export default function HomePeriodFilters({ value, onChange, onCalendar }: HomePeriodFilterProps) {
   return (
     <div className="filters refFilters periodFilters homePeriodFilters">
-      {periodOptions.map(period => (
+      {periodOptions.map((period) => (
         <button
           key={period.value}
           className={value === period.value ? 'selected' : ''}

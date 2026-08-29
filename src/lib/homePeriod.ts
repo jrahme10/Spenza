@@ -6,7 +6,11 @@ export const isInHomePeriod = (txDate: string, period: HomePeriod, selectedDate:
   return txDate.slice(0, 4) === selectedDate.slice(0, 4)
 }
 
-export const shiftHomePeriodDate = (selectedDate: string, period: HomePeriod, direction: number) => {
+export const shiftHomePeriodDate = (
+  selectedDate: string,
+  period: HomePeriod,
+  direction: number,
+) => {
   const date = new Date(`${selectedDate}T12:00:00`)
   if (period === 'custom') date.setDate(date.getDate() + direction)
   else if (period === 'daily') date.setMonth(date.getMonth() + direction)

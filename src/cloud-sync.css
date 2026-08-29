@@ -1,5 +1,454 @@
-.cloudSyncSettings{gap:0;overflow:hidden}.cloudSyncHeader svg{opacity:.85}.cloudSignIn{padding:16px;display:grid;gap:14px}.cloudAuthIntro{display:grid;gap:5px}.cloudAuthIntro b{font-size:16px}.cloudAuthIntro small{opacity:.7;line-height:1.45}.cloudAuthTabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:var(--surface-2,rgba(127,127,127,.08))}.cloudAuthTabs button{min-height:40px;border:0;border-radius:11px;background:transparent;font-weight:700;opacity:.65}.cloudAuthTabs button.active{background:var(--surface,rgba(255,255,255,.9));opacity:1;box-shadow:0 1px 4px rgba(0,0,0,.08)}.cloudSignIn label{display:block;font-size:11px;font-weight:600;margin:12px 0;min-width:0;color:var(--text)}.cloudInputWrap{position:relative;margin-top:7px}.cloudSignIn label>input,.cloudInputWrap input{display:block;width:100%;max-width:100%;min-width:0;margin-top:7px;padding:13px;border:1px solid var(--line);border-radius:13px;background:var(--input);color:var(--text);outline:none;font-size:16px;box-sizing:border-box;min-height:48px}.cloudInputWrap input{margin-top:0;padding-right:46px}.cloudSignIn input:focus{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 10%,transparent)}.cloudSignIn input::placeholder{color:var(--muted);opacity:.75}.cloudPasswordToggle{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;opacity:.8}.cloudAuthPrimary{width:100%;min-height:46px}.cloudForgotPassword{justify-self:center;border:0;background:transparent;font-size:12px;text-decoration:underline;opacity:.75}.cloudAuthHint{padding:10px 12px;border-radius:12px;background:var(--surface-2,rgba(127,127,127,.08));font-size:12px;line-height:1.45;opacity:.8}.cloudDataChoice{margin:16px;padding:16px;border-radius:16px;background:var(--surface-2,rgba(127,127,127,.08));display:grid;gap:12px}.cloudDataChoice h3{margin:0;font-size:16px}.cloudDataChoice p{margin:0;font-size:12px;line-height:1.5;opacity:.75}.cloudDataChoiceActions{display:grid;gap:8px}.cloudDataChoiceActions button{min-height:44px;border-radius:12px}.cloudDataChoiceActions .secondary{background:transparent;border:1px solid rgba(127,127,127,.25)}.cloudDataChoiceActions .cancel{background:transparent;border:0;opacity:.7}.cloudSyncStats{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px 10px}.cloudSyncStats div{padding:12px;border-radius:14px;background:var(--surface-2,rgba(127,127,127,.08));display:grid;gap:4px}.cloudSyncStats span{font-size:11px;opacity:.65;text-transform:uppercase;letter-spacing:.04em}.cloudSyncStats b{font-size:13px;overflow-wrap:anywhere}.cloudProgressPanel{margin:0 16px 12px;padding:12px;border-radius:14px;background:var(--surface-2,rgba(127,127,127,.08));display:grid;gap:8px}.cloudProgressPanel.error{background:rgba(180,35,24,.1);color:#b42318}.cloudProgressTop{display:flex;align-items:center;justify-content:space-between;gap:12px}.cloudProgressTop b{font-size:13px}.cloudProgressTop span{font-size:10px;text-transform:uppercase;letter-spacing:.05em;opacity:.6}.cloudProgressPanel p{margin:0;font-size:12px;line-height:1.4;opacity:.78}.cloudProgressTrack{height:5px;border-radius:999px;overflow:hidden;background:rgba(127,127,127,.16)}.cloudProgressTrack i{display:block;height:100%;border-radius:inherit;background:currentColor;transition:width .2s ease}.cloudSyncActions{display:grid;grid-template-columns:1fr 1fr;align-items:stretch;gap:10px;padding:0 16px 10px}.cloudSyncActions .primary,.cloudSignOut,.cloudCancelSync{width:100%;height:46px!important;min-height:46px!important;margin:0!important;box-sizing:border-box;display:flex;align-items:center;justify-content:center}.cloudSyncActions .primary{gap:8px}.cloudSignOut,.cloudCancelSync{padding:0 18px;border-radius:12px}.cloudCancelSync{gap:7px;border:1px solid rgba(180,35,24,.25);background:rgba(180,35,24,.08);color:#b42318;font-weight:700}.cloudClearButton{margin:0 16px 14px!important;width:calc(100% - 32px)!important;display:flex!important;align-items:center;justify-content:center;gap:7px}.cloudClearButton:disabled{opacity:.5}.cloudSyncMessage{margin:0 16px 16px;padding:10px 12px;border-radius:12px;font-size:12px;background:rgba(127,127,127,.08);line-height:1.4}.cloudSyncMessage.error{color:#b42318;background:rgba(180,35,24,.1)}.globalSyncPill{position:fixed;z-index:99999;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(88vw,420px);display:flex;align-items:center;gap:8px;padding:10px 13px;border-radius:999px;background:rgba(20,20,24,.92);color:#fff;font-size:12px;font-weight:700;box-shadow:0 8px 28px rgba(0,0,0,.24);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}.globalSyncPill span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.globalSyncPill.error{background:rgba(107,24,32,.96)}.globalSyncPill.success{background:rgba(24,84,62,.96)}.globalSyncPill.cancelled{background:rgba(72,72,78,.96)}.spin{animation:spenzaSpin .8s linear infinite}@keyframes spenzaSpin{to{transform:rotate(360deg)}}
-.cloudRestoreButton{position:relative;margin:2px 16px 12px!important;width:calc(100% - 32px)!important;min-height:54px!important;padding:0 18px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;border:1px solid color-mix(in srgb,var(--accent) 34%,var(--line))!important;border-radius:16px!important;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 10%,#fff),color-mix(in srgb,var(--accent) 4%,#fff))!important;color:color-mix(in srgb,var(--accent) 68%,#173a34)!important;font-size:14px!important;font-weight:800!important;letter-spacing:-.01em;box-shadow:0 8px 22px rgba(23,180,148,.09),inset 0 1px 0 rgba(255,255,255,.8);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background .16s ease}.cloudRestoreButton svg{width:18px;height:18px;stroke-width:2.25}.cloudRestoreButton:not(:disabled):active{transform:scale(.985)}.cloudRestoreButton:not(:disabled):hover{border-color:color-mix(in srgb,var(--accent) 50%,var(--line))!important;box-shadow:0 10px 26px rgba(23,180,148,.14),inset 0 1px 0 rgba(255,255,255,.9)}.cloudRestoreButton:disabled{opacity:.5;box-shadow:none}
-html[data-theme='dark'] .cloudRestoreButton{border-color:color-mix(in srgb,var(--accent) 32%,#2c3b49)!important;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 9%,#101b26),color-mix(in srgb,var(--accent) 4%,#0b151f))!important;color:color-mix(in srgb,var(--accent) 78%,#e8fff9)!important;box-shadow:0 10px 26px rgba(0,0,0,.26),inset 0 1px 0 rgba(255,255,255,.035)}html[data-theme='dark'] .cloudRestoreButton:not(:disabled):hover{border-color:color-mix(in srgb,var(--accent) 48%,#324655)!important;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 12%,#111d29),color-mix(in srgb,var(--accent) 6%,#0c1721))!important;box-shadow:0 12px 30px rgba(0,0,0,.32),0 0 0 1px color-mix(in srgb,var(--accent) 8%,transparent)}
-.cloudSignOut{gap:8px!important;border:1px solid color-mix(in srgb,var(--line) 82%,#cfd8df)!important;background:linear-gradient(180deg,#fff,#f7f9fb)!important;color:color-mix(in srgb,var(--text) 86%,#4d5964)!important;font-size:13px!important;font-weight:750!important;letter-spacing:-.01em;box-shadow:0 4px 12px rgba(15,23,42,.055),inset 0 1px 0 rgba(255,255,255,.92);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background .16s ease}.cloudSignOut:not(:disabled):hover{border-color:color-mix(in srgb,var(--accent) 18%,var(--line))!important;background:linear-gradient(180deg,#fff,#f3f6f8)!important;box-shadow:0 6px 16px rgba(15,23,42,.08)}.cloudSignOut:not(:disabled):active{transform:scale(.985)}.cloudSignOut:disabled{opacity:.5;box-shadow:none}html[data-theme='dark'] .cloudSignOut{border-color:#2a3947!important;background:linear-gradient(180deg,#14202b,#101a24)!important;color:#d8e4ec!important;box-shadow:0 6px 18px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.03)}html[data-theme='dark'] .cloudSignOut:not(:disabled):hover{border-color:color-mix(in srgb,var(--accent) 20%,#304251)!important;background:linear-gradient(180deg,#172530,#121e28)!important;box-shadow:0 8px 22px rgba(0,0,0,.27)}
-@media(max-width:420px){.cloudSyncStats{grid-template-columns:1fr}.cloudSyncActions{grid-template-columns:1fr 1fr}.globalSyncPill{bottom:calc(78px + env(safe-area-inset-bottom,0px));max-width:86vw}.cloudRestoreButton{min-height:52px!important;border-radius:15px!important}.cloudSignOut{border-radius:13px!important}}
+.cloudSyncSettings {
+  gap: 0;
+  overflow: hidden;
+}
+.cloudSyncHeader svg {
+  opacity: 0.85;
+}
+.cloudSignIn {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+.cloudAuthIntro {
+  display: grid;
+  gap: 5px;
+}
+.cloudAuthIntro b {
+  font-size: 16px;
+}
+.cloudAuthIntro small {
+  opacity: 0.7;
+  line-height: 1.45;
+}
+.cloudAuthTabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--surface-2, rgba(127, 127, 127, 0.08));
+}
+.cloudAuthTabs button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  font-weight: 700;
+  opacity: 0.65;
+}
+.cloudAuthTabs button.active {
+  background: var(--surface, rgba(255, 255, 255, 0.9));
+  opacity: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.cloudSignIn label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  margin: 12px 0;
+  min-width: 0;
+  color: var(--text);
+}
+.cloudInputWrap {
+  position: relative;
+  margin-top: 7px;
+}
+.cloudSignIn label > input,
+.cloudInputWrap input {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: 7px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--input);
+  color: var(--text);
+  outline: none;
+  font-size: 16px;
+  box-sizing: border-box;
+  min-height: 48px;
+}
+.cloudInputWrap input {
+  margin-top: 0;
+  padding-right: 46px;
+}
+.cloudSignIn input:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.cloudSignIn input::placeholder {
+  color: var(--muted);
+  opacity: 0.75;
+}
+.cloudPasswordToggle {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  opacity: 0.8;
+}
+.cloudAuthPrimary {
+  width: 100%;
+  min-height: 46px;
+}
+.cloudForgotPassword {
+  justify-self: center;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  text-decoration: underline;
+  opacity: 0.75;
+}
+.cloudAuthHint {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2, rgba(127, 127, 127, 0.08));
+  font-size: 12px;
+  line-height: 1.45;
+  opacity: 0.8;
+}
+.cloudDataChoice {
+  margin: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--surface-2, rgba(127, 127, 127, 0.08));
+  display: grid;
+  gap: 12px;
+}
+.cloudDataChoice h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.cloudDataChoice p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.75;
+}
+.cloudDataChoiceActions {
+  display: grid;
+  gap: 8px;
+}
+.cloudDataChoiceActions button {
+  min-height: 44px;
+  border-radius: 12px;
+}
+.cloudDataChoiceActions .secondary {
+  background: transparent;
+  border: 1px solid rgba(127, 127, 127, 0.25);
+}
+.cloudDataChoiceActions .cancel {
+  background: transparent;
+  border: 0;
+  opacity: 0.7;
+}
+.cloudSyncStats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 14px 16px 10px;
+}
+.cloudSyncStats div {
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface-2, rgba(127, 127, 127, 0.08));
+  display: grid;
+  gap: 4px;
+}
+.cloudSyncStats span {
+  font-size: 11px;
+  opacity: 0.65;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cloudSyncStats b {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.cloudProgressPanel {
+  margin: 0 16px 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface-2, rgba(127, 127, 127, 0.08));
+  display: grid;
+  gap: 8px;
+}
+.cloudProgressPanel.error {
+  background: rgba(180, 35, 24, 0.1);
+  color: #b42318;
+}
+.cloudProgressTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cloudProgressTop b {
+  font-size: 13px;
+}
+.cloudProgressTop span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.6;
+}
+.cloudProgressPanel p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.78;
+}
+.cloudProgressTrack {
+  height: 5px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(127, 127, 127, 0.16);
+}
+.cloudProgressTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+  transition: width 0.2s ease;
+}
+.cloudSyncActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+  gap: 10px;
+  padding: 0 16px 10px;
+}
+.cloudSyncActions .primary,
+.cloudSignOut,
+.cloudCancelSync {
+  width: 100%;
+  height: 46px !important;
+  min-height: 46px !important;
+  margin: 0 !important;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cloudSyncActions .primary {
+  gap: 8px;
+}
+.cloudSignOut,
+.cloudCancelSync {
+  padding: 0 18px;
+  border-radius: 12px;
+}
+.cloudCancelSync {
+  gap: 7px;
+  border: 1px solid rgba(180, 35, 24, 0.25);
+  background: rgba(180, 35, 24, 0.08);
+  color: #b42318;
+  font-weight: 700;
+}
+.cloudClearButton {
+  margin: 0 16px 14px !important;
+  width: calc(100% - 32px) !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.cloudClearButton:disabled {
+  opacity: 0.5;
+}
+.cloudSyncMessage {
+  margin: 0 16px 16px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  background: rgba(127, 127, 127, 0.08);
+  line-height: 1.4;
+}
+.cloudSyncMessage.error {
+  color: #b42318;
+  background: rgba(180, 35, 24, 0.1);
+}
+.globalSyncPill {
+  position: fixed;
+  z-index: 99999;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  max-width: min(88vw, 420px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 13px;
+  border-radius: 999px;
+  background: rgba(20, 20, 24, 0.92);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.globalSyncPill span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.globalSyncPill.error {
+  background: rgba(107, 24, 32, 0.96);
+}
+.globalSyncPill.success {
+  background: rgba(24, 84, 62, 0.96);
+}
+.globalSyncPill.cancelled {
+  background: rgba(72, 72, 78, 0.96);
+}
+.spin {
+  animation: spenzaSpin 0.8s linear infinite;
+}
+@keyframes spenzaSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.cloudRestoreButton {
+  position: relative;
+  margin: 2px 16px 12px !important;
+  width: calc(100% - 32px) !important;
+  min-height: 54px !important;
+  padding: 0 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line)) !important;
+  border-radius: 16px !important;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 10%, #fff),
+    color-mix(in srgb, var(--accent) 4%, #fff)
+  ) !important;
+  color: color-mix(in srgb, var(--accent) 68%, #173a34) !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.01em;
+  box-shadow:
+    0 8px 22px rgba(23, 180, 148, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+.cloudRestoreButton svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.25;
+}
+.cloudRestoreButton:not(:disabled):active {
+  transform: scale(0.985);
+}
+.cloudRestoreButton:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line)) !important;
+  box-shadow:
+    0 10px 26px rgba(23, 180, 148, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.cloudRestoreButton:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+}
+html[data-theme='dark'] .cloudRestoreButton {
+  border-color: color-mix(in srgb, var(--accent) 32%, #2c3b49) !important;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 9%, #101b26),
+    color-mix(in srgb, var(--accent) 4%, #0b151f)
+  ) !important;
+  color: color-mix(in srgb, var(--accent) 78%, #e8fff9) !important;
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+html[data-theme='dark'] .cloudRestoreButton:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--accent) 48%, #324655) !important;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 12%, #111d29),
+    color-mix(in srgb, var(--accent) 6%, #0c1721)
+  ) !important;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.32),
+    0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.cloudSignOut {
+  gap: 8px !important;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, #cfd8df) !important;
+  background: linear-gradient(180deg, #fff, #f7f9fb) !important;
+  color: color-mix(in srgb, var(--text) 86%, #4d5964) !important;
+  font-size: 13px !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.01em;
+  box-shadow:
+    0 4px 12px rgba(15, 23, 42, 0.055),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+.cloudSignOut:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--accent) 18%, var(--line)) !important;
+  background: linear-gradient(180deg, #fff, #f3f6f8) !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+.cloudSignOut:not(:disabled):active {
+  transform: scale(0.985);
+}
+.cloudSignOut:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+}
+html[data-theme='dark'] .cloudSignOut {
+  border-color: #2a3947 !important;
+  background: linear-gradient(180deg, #14202b, #101a24) !important;
+  color: #d8e4ec !important;
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+html[data-theme='dark'] .cloudSignOut:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--accent) 20%, #304251) !important;
+  background: linear-gradient(180deg, #172530, #121e28) !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.27);
+}
+@media (max-width: 420px) {
+  .cloudSyncStats {
+    grid-template-columns: 1fr;
+  }
+  .cloudSyncActions {
+    grid-template-columns: 1fr 1fr;
+  }
+  .globalSyncPill {
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    max-width: 86vw;
+  }
+  .cloudRestoreButton {
+    min-height: 52px !important;
+    border-radius: 15px !important;
+  }
+  .cloudSignOut {
+    border-radius: 13px !important;
+  }
+}

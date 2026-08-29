@@ -1,88 +1,208 @@
-import { syncSupabaseIfAuthenticated, SupabaseSyncResult, SyncErrorKind, SyncProgress } from './supabaseSync'
+import {
+  syncSupabaseIfAuthenticated,
+  SupabaseSyncResult,
+  SyncErrorKind,
+  SyncProgress,
+} from './supabaseSync'
 import { getSupabaseClient, getSupabaseUserId } from './supabaseClient'
 import { syncAccountSettings } from './accountSettingsSync'
 
-export type GlobalSyncState={
-  status:'idle'|'syncing'|'synced'|'error'|'signed-out'|'cancelled'
-  progress?:SyncProgress
-  error?:string
-  errorKind?:SyncErrorKind
-  retryable?:boolean
-  lastResult?:SupabaseSyncResult
-  startedAt?:number
-  finishedAt?:number
+export type GlobalSyncState = {
+  status: 'idle' | 'syncing' | 'synced' | 'error' | 'signed-out' | 'cancelled'
+  progress?: SyncProgress
+  error?: string
+  errorKind?: SyncErrorKind
+  retryable?: boolean
+  lastResult?: SupabaseSyncResult
+  startedAt?: number
+  finishedAt?: number
 }
 
-type Listener=(state:GlobalSyncState)=>void
-let state:GlobalSyncState={status:'idle'}
-let active:Promise<SupabaseSyncResult>|null=null
-let activeController:AbortController|null=null
-let realtimeChannel:ReturnType<NonNullable<ReturnType<typeof getSupabaseClient>>['channel']>|null=null
-let realtimeUserId=''
-let realtimeTimer:number|undefined
-let suppressRealtimeUntil=0
-const listeners=new Set<Listener>()
-const emit=(next:GlobalSyncState)=>{state=next;for(const listener of listeners)listener(state)}
+type Listener = (state: GlobalSyncState) => void
+let state: GlobalSyncState = { status: 'idle' }
+let active: Promise<SupabaseSyncResult> | null = null
+let activeController: AbortController | null = null
+let realtimeChannel: ReturnType<
+  NonNullable<ReturnType<typeof getSupabaseClient>>['channel']
+> | null = null
+let realtimeUserId = ''
+let realtimeTimer: number | undefined
+let suppressRealtimeUntil = 0
+const listeners = new Set<Listener>()
+const emit = (next: GlobalSyncState) => {
+  state = next
+  for (const listener of listeners) listener(state)
+}
 
-async function ensureRealtimeSync(){
-  const supabase=getSupabaseClient()
-  if(!supabase)return
-  const userId=await getSupabaseUserId()
-  if(!userId)return
-  if(realtimeChannel&&realtimeUserId===userId)return
-  if(realtimeChannel){await supabase.removeChannel(realtimeChannel);realtimeChannel=null}
-  realtimeUserId=userId
-  const onRemoteChange=()=>{
-    if(Date.now()<suppressRealtimeUntil||active)return
-    if(realtimeTimer)window.clearTimeout(realtimeTimer)
-    realtimeTimer=window.setTimeout(()=>{
-      realtimeTimer=undefined
-      if(active)return
-      void syncManager.run().then(result=>{
-        if(result.status==='synced'&&result.data&&typeof window!=='undefined')window.location.reload()
+async function ensureRealtimeSync() {
+  const supabase = getSupabaseClient()
+  if (!supabase) return
+  const userId = await getSupabaseUserId()
+  if (!userId) return
+  if (realtimeChannel && realtimeUserId === userId) return
+  if (realtimeChannel) {
+    await supabase.removeChannel(realtimeChannel)
+    realtimeChannel = null
+  }
+  realtimeUserId = userId
+  const onRemoteChange = () => {
+    if (Date.now() < suppressRealtimeUntil || active) return
+    if (realtimeTimer) window.clearTimeout(realtimeTimer)
+    realtimeTimer = window.setTimeout(() => {
+      realtimeTimer = undefined
+      if (active) return
+      void syncManager.run().then((result) => {
+        if (result.status === 'synced' && result.data && typeof window !== 'undefined')
+          window.location.reload()
       })
-    },150)
+    }, 150)
   }
-  let channel=supabase.channel(`spenza-sync-${userId}`)
-  for(const table of ['spenza_wallets','spenza_transactions','spenza_bills','spenza_tombstones','spenza_budgets','spenza_account_settings']){
-    channel=channel.on('postgres_changes',{event:'*',schema:'public',table,filter:`owner_id=eq.${userId}`},onRemoteChange)
+  let channel = supabase.channel(`spenza-sync-${userId}`)
+  for (const table of [
+    'spenza_wallets',
+    'spenza_transactions',
+    'spenza_bills',
+    'spenza_tombstones',
+    'spenza_budgets',
+    'spenza_account_settings',
+  ]) {
+    channel = channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table, filter: `owner_id=eq.${userId}` },
+      onRemoteChange,
+    )
   }
-  realtimeChannel=channel.subscribe()
+  realtimeChannel = channel.subscribe()
 }
 
-async function runAllSync(signal:AbortSignal,onProgress:(progress:SyncProgress)=>void):Promise<SupabaseSyncResult>{
-  const financial=await syncSupabaseIfAuthenticated({signal,onProgress})
-  if(financial.status!=='synced')return financial
-  const settingsData=await syncAccountSettings(financial.data)
-  return {...financial,data:settingsData}
+async function runAllSync(
+  signal: AbortSignal,
+  onProgress: (progress: SyncProgress) => void,
+): Promise<SupabaseSyncResult> {
+  const financial = await syncSupabaseIfAuthenticated({ signal, onProgress })
+  if (financial.status !== 'synced') return financial
+  const settingsData = await syncAccountSettings(financial.data)
+  return { ...financial, data: settingsData }
 }
 
-export const syncManager={
-  getState:()=>state,
-  subscribe(listener:Listener){listeners.add(listener);listener(state);return()=>{listeners.delete(listener)}},
-  cancel(){if(!activeController||!active)return false;activeController.abort();return true},
-  run():Promise<SupabaseSyncResult>{
-    if(active)return active
-    const startedAt=Date.now()
-    const controller=new AbortController()
-    activeController=controller
-    emit({status:'syncing',startedAt,progress:{phase:'checking',message:'Starting sync…'}})
-    const task:Promise<SupabaseSyncResult>=runAllSync(controller.signal,progress=>{if(!controller.signal.aborted||progress.phase==='cancelled')emit({status:progress.phase==='cancelled'?'cancelled':'syncing',startedAt,finishedAt:progress.phase==='cancelled'?Date.now():undefined,progress})})
-      .then(result=>{
-        if(result.status==='cancelled')emit({status:'cancelled',startedAt,finishedAt:Date.now(),lastResult:result,progress:{phase:'cancelled',message:'Sync cancelled.'}})
-        else if(result.status==='synced'){
-          suppressRealtimeUntil=Date.now()+1200
-          emit({status:'synced',startedAt,finishedAt:Date.now(),lastResult:result,progress:{phase:'complete',remaining:0,message:result.restored?`Restored ${result.restored.wallets} accounts and ${result.restored.transactions} transactions.`:'Everything is up to date.'}})
+export const syncManager = {
+  getState: () => state,
+  subscribe(listener: Listener) {
+    listeners.add(listener)
+    listener(state)
+    return () => {
+      listeners.delete(listener)
+    }
+  },
+  cancel() {
+    if (!activeController || !active) return false
+    activeController.abort()
+    return true
+  },
+  run(): Promise<SupabaseSyncResult> {
+    if (active) return active
+    const startedAt = Date.now()
+    const controller = new AbortController()
+    activeController = controller
+    emit({
+      status: 'syncing',
+      startedAt,
+      progress: { phase: 'checking', message: 'Starting sync…' },
+    })
+    const task: Promise<SupabaseSyncResult> = runAllSync(controller.signal, (progress) => {
+      if (!controller.signal.aborted || progress.phase === 'cancelled')
+        emit({
+          status: progress.phase === 'cancelled' ? 'cancelled' : 'syncing',
+          startedAt,
+          finishedAt: progress.phase === 'cancelled' ? Date.now() : undefined,
+          progress,
+        })
+    })
+      .then((result) => {
+        if (result.status === 'cancelled')
+          emit({
+            status: 'cancelled',
+            startedAt,
+            finishedAt: Date.now(),
+            lastResult: result,
+            progress: { phase: 'cancelled', message: 'Sync cancelled.' },
+          })
+        else if (result.status === 'synced') {
+          suppressRealtimeUntil = Date.now() + 1200
+          emit({
+            status: 'synced',
+            startedAt,
+            finishedAt: Date.now(),
+            lastResult: result,
+            progress: {
+              phase: 'complete',
+              remaining: 0,
+              message: result.restored
+                ? `Restored ${result.restored.wallets} accounts and ${result.restored.transactions} transactions.`
+                : 'Everything is up to date.',
+            },
+          })
           void ensureRealtimeSync()
-        }
-        else if(result.status==='signed-out')emit({status:'signed-out',startedAt,finishedAt:Date.now(),lastResult:result,error:result.error,errorKind:result.errorKind,retryable:false})
-        else if(result.status==='error')emit({status:'error',startedAt,finishedAt:Date.now(),lastResult:result,error:result.error||'Cloud sync failed.',errorKind:result.errorKind||'unknown',retryable:result.retryable??true})
-        else emit({status:'idle',startedAt,finishedAt:Date.now(),lastResult:result})
+        } else if (result.status === 'signed-out')
+          emit({
+            status: 'signed-out',
+            startedAt,
+            finishedAt: Date.now(),
+            lastResult: result,
+            error: result.error,
+            errorKind: result.errorKind,
+            retryable: false,
+          })
+        else if (result.status === 'error')
+          emit({
+            status: 'error',
+            startedAt,
+            finishedAt: Date.now(),
+            lastResult: result,
+            error: result.error || 'Cloud sync failed.',
+            errorKind: result.errorKind || 'unknown',
+            retryable: result.retryable ?? true,
+          })
+        else emit({ status: 'idle', startedAt, finishedAt: Date.now(), lastResult: result })
         return result
       })
-      .catch((error):SupabaseSyncResult=>{if(controller.signal.aborted){const result:SupabaseSyncResult={status:'cancelled'};emit({status:'cancelled',startedAt,finishedAt:Date.now(),lastResult:result,progress:{phase:'cancelled',message:'Sync cancelled.'}});return result}const message=error instanceof Error?error.message:String(error);const result:SupabaseSyncResult={status:'error',error:message,errorKind:'unknown',retryable:true};emit({status:'error',startedAt,finishedAt:Date.now(),error:message,errorKind:'unknown',retryable:true,lastResult:result});return result})
-    active=task
-    void task.finally(()=>{if(active===task){active=null;activeController=null}})
+      .catch((error): SupabaseSyncResult => {
+        if (controller.signal.aborted) {
+          const result: SupabaseSyncResult = { status: 'cancelled' }
+          emit({
+            status: 'cancelled',
+            startedAt,
+            finishedAt: Date.now(),
+            lastResult: result,
+            progress: { phase: 'cancelled', message: 'Sync cancelled.' },
+          })
+          return result
+        }
+        const message = error instanceof Error ? error.message : String(error)
+        const result: SupabaseSyncResult = {
+          status: 'error',
+          error: message,
+          errorKind: 'unknown',
+          retryable: true,
+        }
+        emit({
+          status: 'error',
+          startedAt,
+          finishedAt: Date.now(),
+          error: message,
+          errorKind: 'unknown',
+          retryable: true,
+          lastResult: result,
+        })
+        return result
+      })
+    active = task
+    void task.finally(() => {
+      if (active === task) {
+        active = null
+        activeController = null
+      }
+    })
     return task
   },
 }

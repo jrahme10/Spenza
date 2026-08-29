@@ -1,15 +1,23 @@
 /* Prevent the page behind Spenza popups from scrolling without moving the page. */
-html:has(.overlay,.dialogOverlay,.calendarOverlay,.notificationOverlay,.appLockScreen),
-body:has(.overlay,.dialogOverlay,.calendarOverlay,.notificationOverlay,.appLockScreen){
-  overflow:hidden;
-  overscroll-behavior:none;
+html:has(.overlay, .dialogOverlay, .calendarOverlay, .notificationOverlay, .appLockScreen),
+body:has(.overlay, .dialogOverlay, .calendarOverlay, .notificationOverlay, .appLockScreen) {
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 /* Keep the active popup/sheet itself scrollable on touch devices. */
-.overlay,.dialogOverlay,.calendarOverlay,.notificationOverlay,.appLockScreen{
-  overscroll-behavior:contain;
+.overlay,
+.dialogOverlay,
+.calendarOverlay,
+.notificationOverlay,
+.appLockScreen {
+  overscroll-behavior: contain;
 }
-.sheet,.notificationPanel,.transactionCalendar,.dialogCard,.appLockCard{
-  overscroll-behavior:contain;
-  -webkit-overflow-scrolling:touch;
+.sheet,
+.notificationPanel,
+.transactionCalendar,
+.dialogCard,
+.appLockCard {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }

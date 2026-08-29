@@ -1,9 +1,55 @@
-.homeCashflowSummary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:10px 0 12px;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden;box-shadow:0 8px 20px rgba(0,0,0,.05)}
-.homeCashflowSummary article{min-width:0;padding:10px 9px;text-align:center;background:transparent;border:0;border-right:1px solid var(--line);border-radius:0}
-.homeCashflowSummary article:last-child{border-right:0}
-.homeCashflowSummary span{display:block;margin-bottom:4px;color:var(--muted);font-size:9px}
-.homeCashflowSummary strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-size:12px;line-height:1.25}
-.homeCashflowSummary article:first-child strong{color:var(--accent)!important}
-.homeCashflowSummary article:nth-child(2) strong{color:#fff!important}
-.homeCashflowSummary article:last-child strong{font-weight:800}
-@media(max-width:360px){.homeCashflowSummary strong{font-size:10px}.homeCashflowSummary article{padding:9px 6px}}
+.homeCashflowSummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 10px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+}
+.homeCashflowSummary article {
+  min-width: 0;
+  padding: 10px 9px;
+  text-align: center;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+}
+.homeCashflowSummary article:last-child {
+  border-right: 0;
+}
+.homeCashflowSummary span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 9px;
+}
+.homeCashflowSummary strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.25;
+}
+.homeCashflowSummary article:first-child strong {
+  color: var(--accent) !important;
+}
+.homeCashflowSummary article:nth-child(2) strong {
+  color: #fff !important;
+}
+.homeCashflowSummary article:last-child strong {
+  font-weight: 800;
+}
+@media (max-width: 360px) {
+  .homeCashflowSummary strong {
+    font-size: 10px;
+  }
+  .homeCashflowSummary article {
+    padding: 9px 6px;
+  }
+}

@@ -1,1 +1,75 @@
-.conversionNotice{margin:10px 0 14px;padding:12px 14px;border:1px solid #d8e3dc;background:#eef5f1;border-radius:14px;color:#365448}.conversionNotice b,.conversionNotice span{display:block}.conversionNotice b{font-size:11px;margin-bottom:4px}.conversionNotice span{font-size:12px;line-height:1.45}.settingsField{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:12px;font-weight:600;color:#565850}.settingsField input{width:130px;padding:10px 11px;border:1px solid #d7d3c9;border-radius:11px;background:#fff;font-size:16px}.emptyWalletCta{width:100%;border:1px dashed #cec9bd;background:#f2eee5;border-radius:18px;padding:15px;margin-bottom:24px;display:flex;align-items:center;gap:12px;text-align:left;color:#42564d}.emptyWalletCta>svg{width:22px;flex:none}.emptyWalletCta span,.emptyWalletCta b,.emptyWalletCta small{display:block}.emptyWalletCta b{font-size:13px}.emptyWalletCta small{font-size:10px;color:#7f8079;margin-top:3px;line-height:1.35}.empty.compact{padding:24px 0}.sheet label>.fieldHint{float:right;margin-top:0!important}
+.conversionNotice {
+  margin: 10px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #d8e3dc;
+  background: #eef5f1;
+  border-radius: 14px;
+  color: #365448;
+}
+.conversionNotice b,
+.conversionNotice span {
+  display: block;
+}
+.conversionNotice b {
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.conversionNotice span {
+  font-size: 12px;
+  line-height: 1.45;
+}
+.settingsField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #565850;
+}
+.settingsField input {
+  width: 130px;
+  padding: 10px 11px;
+  border: 1px solid #d7d3c9;
+  border-radius: 11px;
+  background: #fff;
+  font-size: 16px;
+}
+.emptyWalletCta {
+  width: 100%;
+  border: 1px dashed #cec9bd;
+  background: #f2eee5;
+  border-radius: 18px;
+  padding: 15px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  color: #42564d;
+}
+.emptyWalletCta > svg {
+  width: 22px;
+  flex: none;
+}
+.emptyWalletCta span,
+.emptyWalletCta b,
+.emptyWalletCta small {
+  display: block;
+}
+.emptyWalletCta b {
+  font-size: 13px;
+}
+.emptyWalletCta small {
+  font-size: 10px;
+  color: #7f8079;
+  margin-top: 3px;
+  line-height: 1.35;
+}
+.empty.compact {
+  padding: 24px 0;
+}
+.sheet label > .fieldHint {
+  float: right;
+  margin-top: 0 !important;
+}

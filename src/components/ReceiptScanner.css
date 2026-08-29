@@ -1,1 +1,112 @@
-.receiptScanner{margin:4px 0 14px}.receiptInput{display:none!important}.receiptButton{width:100%;border:1px dashed #c9d2cd;background:#eef3f0;border-radius:16px;padding:13px 14px;display:flex;align-items:center;text-align:left;color:#263b32;gap:11px}.receiptButton:disabled{opacity:.75}.receiptIcon{width:38px;height:38px;border-radius:12px;background:#fff;display:grid;place-items:center;box-shadow:0 3px 10px #1f382d14}.receiptIcon svg{width:18px}.receiptButton>span:nth-child(2){display:flex;flex-direction:column;gap:2px;flex:1}.receiptButton b{font-size:12px}.receiptButton small{font-size:10px;color:#7d8782}.receiptSideIcon{width:18px;color:#7d8c85}.receiptStatus{font-size:10px;line-height:1.45;padding:8px 10px;border-radius:10px;margin-top:7px}.receiptStatus.scanning{background:#eef0f5;color:#596176}.receiptStatus.done{background:#e7f1ea;color:#3a6c55}.receiptStatus.error{background:#fff0ec;color:#9b594f}.spin{animation:receiptSpin 1s linear infinite}@keyframes receiptSpin{to{transform:rotate(360deg)}}.emptyWalletCta{width:100%;display:flex;align-items:center;gap:12px;border:1px dashed #cfcac0;background:#f3efe7;color:#2b3e36;border-radius:18px;padding:15px;text-align:left;margin-bottom:24px}.emptyWalletCta>svg{width:23px}.emptyWalletCta span{display:flex;flex-direction:column;gap:3px}.emptyWalletCta b{font-size:12px}.emptyWalletCta small{font-size:10px;color:#7e7b73;line-height:1.4}.empty.compact{padding:24px 0}.sheet .receiptScanner+label{margin-top:10px}
+.receiptScanner {
+  margin: 4px 0 14px;
+}
+.receiptInput {
+  display: none !important;
+}
+.receiptButton {
+  width: 100%;
+  border: 1px dashed #c9d2cd;
+  background: #eef3f0;
+  border-radius: 16px;
+  padding: 13px 14px;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  color: #263b32;
+  gap: 11px;
+}
+.receiptButton:disabled {
+  opacity: 0.75;
+}
+.receiptIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 3px 10px #1f382d14;
+}
+.receiptIcon svg {
+  width: 18px;
+}
+.receiptButton > span:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.receiptButton b {
+  font-size: 12px;
+}
+.receiptButton small {
+  font-size: 10px;
+  color: #7d8782;
+}
+.receiptSideIcon {
+  width: 18px;
+  color: #7d8c85;
+}
+.receiptStatus {
+  font-size: 10px;
+  line-height: 1.45;
+  padding: 8px 10px;
+  border-radius: 10px;
+  margin-top: 7px;
+}
+.receiptStatus.scanning {
+  background: #eef0f5;
+  color: #596176;
+}
+.receiptStatus.done {
+  background: #e7f1ea;
+  color: #3a6c55;
+}
+.receiptStatus.error {
+  background: #fff0ec;
+  color: #9b594f;
+}
+.spin {
+  animation: receiptSpin 1s linear infinite;
+}
+@keyframes receiptSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.emptyWalletCta {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px dashed #cfcac0;
+  background: #f3efe7;
+  color: #2b3e36;
+  border-radius: 18px;
+  padding: 15px;
+  text-align: left;
+  margin-bottom: 24px;
+}
+.emptyWalletCta > svg {
+  width: 23px;
+}
+.emptyWalletCta span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.emptyWalletCta b {
+  font-size: 12px;
+}
+.emptyWalletCta small {
+  font-size: 10px;
+  color: #7e7b73;
+  line-height: 1.4;
+}
+.empty.compact {
+  padding: 24px 0;
+}
+.sheet .receiptScanner + label {
+  margin-top: 10px;
+}

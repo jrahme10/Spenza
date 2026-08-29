@@ -88,7 +88,19 @@ export type SpenzaData = {
 }
 
 export const DATA_SCHEMA_VERSION = 4
-export const defaultCategories = ['Food', 'Transport', 'Shopping', 'Bills', 'Coffee', 'Entertainment', 'Health', 'Education', 'Travel', 'Salary', 'Other']
+export const defaultCategories = [
+  'Food',
+  'Transport',
+  'Shopping',
+  'Bills',
+  'Coffee',
+  'Entertainment',
+  'Health',
+  'Education',
+  'Travel',
+  'Salary',
+  'Other',
+]
 export const DEFAULT_USD_TO_LBP_RATE = 89500
 const RATE_STORAGE_KEY = 'spenza-usd-to-lbp-rate'
 
@@ -120,7 +132,11 @@ function persistRate(value: number) {
 function isStoredEnvelope(value: unknown): value is StoredEnvelope<SpenzaData> {
   if (!value || typeof value !== 'object') return false
   const candidate = value as Partial<StoredEnvelope<SpenzaData>>
-  return typeof candidate.schemaVersion === 'number' && !!candidate.data && typeof candidate.data === 'object'
+  return (
+    typeof candidate.schemaVersion === 'number' &&
+    !!candidate.data &&
+    typeof candidate.data === 'object'
+  )
 }
 
 function dateFallback(date?: string) {
@@ -133,7 +149,13 @@ function normalizeTombstones(value: unknown): SyncTombstone[] {
   return value.filter((item): item is SyncTombstone => {
     if (!item || typeof item !== 'object') return false
     const tombstone = item as Partial<SyncTombstone>
-    return ['wallet','transaction','bill'].includes(String(tombstone.entityType)) && typeof tombstone.entityId === 'string' && !!tombstone.entityId && typeof tombstone.deletedAt === 'string' && !!tombstone.deletedAt
+    return (
+      ['wallet', 'transaction', 'bill'].includes(String(tombstone.entityType)) &&
+      typeof tombstone.entityId === 'string' &&
+      !!tombstone.entityId &&
+      typeof tombstone.deletedAt === 'string' &&
+      !!tombstone.deletedAt
+    )
   })
 }
 
@@ -143,34 +165,50 @@ function normalizePendingChanges(value: unknown): SyncChange[] {
   for (const item of value) {
     if (!item || typeof item !== 'object') continue
     const change = item as Partial<SyncChange>
-    if (!['wallet','transaction','bill'].includes(String(change.entityType))) continue
-    if (!['upsert','delete'].includes(String(change.operation))) continue
-    if (typeof change.entityId !== 'string' || !change.entityId || typeof change.changedAt !== 'string' || !change.changedAt) continue
+    if (!['wallet', 'transaction', 'bill'].includes(String(change.entityType))) continue
+    if (!['upsert', 'delete'].includes(String(change.operation))) continue
+    if (
+      typeof change.entityId !== 'string' ||
+      !change.entityId ||
+      typeof change.changedAt !== 'string' ||
+      !change.changedAt
+    )
+      continue
     const normalized = change as SyncChange
     const key = `${normalized.entityType}:${normalized.entityId}`
     const current = newest.get(key)
     if (!current || normalized.changedAt >= current.changedAt) newest.set(key, normalized)
   }
-  return [...newest.values()].sort((a,b)=>a.changedAt.localeCompare(b.changedAt))
+  return [...newest.values()].sort((a, b) => a.changedAt.localeCompare(b.changedAt))
 }
 
 function normalizeData(stored?: Partial<SpenzaData>): SpenzaData {
   const now = new Date().toISOString()
-  const wallets = (stored?.wallets ?? []).map(wallet => {
+  const wallets = (stored?.wallets ?? []).map((wallet) => {
     const createdAt = wallet.createdAt || wallet.updatedAt || now
     return { ...wallet, createdAt, updatedAt: wallet.updatedAt || createdAt }
   })
-  const transactions = (stored?.transactions ?? []).map(transaction => {
-    const createdAt = transaction.createdAt || transaction.updatedAt || dateFallback(transaction.date)
+  const transactions = (stored?.transactions ?? []).map((transaction) => {
+    const createdAt =
+      transaction.createdAt || transaction.updatedAt || dateFallback(transaction.date)
     return { ...transaction, createdAt, updatedAt: transaction.updatedAt || createdAt }
   })
-  const bills = (stored?.bills ?? []).map(bill => {
+  const bills = (stored?.bills ?? []).map((bill) => {
     const createdAt = bill.createdAt || bill.updatedAt || dateFallback(bill.dueDate)
     return { ...bill, createdAt, updatedAt: bill.updatedAt || createdAt }
   })
   const savedCategories = stored?.categories ?? defaultCategories
-  const usedTransactionCategories = transactions.map(transaction => transaction.category?.trim()).filter((category): category is string => !!category)
-  const categories = [...new Map([...savedCategories,...usedTransactionCategories].map(category => [category.toLowerCase(),category])).values()]
+  const usedTransactionCategories = transactions
+    .map((transaction) => transaction.category?.trim())
+    .filter((category): category is string => !!category)
+  const categories = [
+    ...new Map(
+      [...savedCategories, ...usedTransactionCategories].map((category) => [
+        category.toLowerCase(),
+        category,
+      ]),
+    ).values(),
+  ]
   const persistedRate = readPersistedRate()
 
   return {
@@ -226,5 +264,7 @@ export async function saveData(data: SpenzaData): Promise<void> {
 }
 
 export function uid() {
-  return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+  return crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
