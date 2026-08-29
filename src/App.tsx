@@ -12,6 +12,7 @@ import NotificationCenter, { NotificationBell } from './components/NotificationC
 import TransactionCalendar from './components/TransactionCalendar'
 import { Currency, defaultData, loadData, saveData, SpenzaData, Transaction, TransactionType, uid, Wallet } from './lib/db'
 import { localRepository } from './lib/repository'
+import { syncManager } from './lib/syncManager'
 
 const money=(n:number,c:Currency|'USD'='USD')=>new Intl.NumberFormat('en-US',{style:'currency',currency:c,maximumFractionDigits:c==='LBP'?0:2}).format(n)
 const today=()=>new Date().toISOString().slice(0,10)
@@ -62,6 +63,8 @@ export default function App(){
  const [activityCategoryFilter,setActivityCategoryFilter]=useState(()=>localStorage.getItem('spenza-activity-category')||'all')
  useEffect(()=>{loadData().then(d=>{setData(d);setRateInput(String(d.usdToLbpRate||89500));setReady(true)}).catch(()=>setReady(true))},[])
  useEffect(()=>{if(ready)saveData(data)},[data,ready])
+ useEffect(()=>{if(!ready||!data.sync.pendingChanges.length)return;const timer=window.setTimeout(()=>{void syncManager.run().then(result=>{if(result.status==='synced'&&result.data)setData(result.data)})},500);return()=>window.clearTimeout(timer)},[ready,data.sync.pendingChanges])
+ useEffect(()=>{if(!ready)return;const sync=()=>{if(document.visibilityState==='hidden')return;void syncManager.run().then(result=>{if(result.status==='synced'&&result.data)setData(result.data)})};const onVisibility=()=>{if(document.visibilityState==='visible')sync()};window.addEventListener('focus',sync);document.addEventListener('visibilitychange',onVisibility);const timer=window.setInterval(sync,15000);sync();return()=>{window.removeEventListener('focus',sync);document.removeEventListener('visibilitychange',onVisibility);window.clearInterval(timer)}},[ready])
  useEffect(()=>{if(!ready)return;if(!insightWalletId&&data.wallets[0])setInsightWalletId(data.wallets[0].id);if(insightWalletId&&!data.wallets.some(w=>w.id===insightWalletId))setInsightWalletId(data.wallets[0]?.id||'')},[data.wallets,insightWalletId,ready])
  useEffect(()=>{if(!ready)return;if(!homeWalletId&&data.wallets[0]){setHomeWalletId(data.wallets[0].id);return}if(homeWalletId&&!data.wallets.some(w=>w.id===homeWalletId)){const fallback=data.wallets[0]?.id||'';setHomeWalletId(fallback);if(fallback)localStorage.setItem('spenza-home-wallet-id',fallback);else localStorage.removeItem('spenza-home-wallet-id')}},[data.wallets,homeWalletId,ready])
  useEffect(()=>{if(homeWalletId)localStorage.setItem('spenza-home-wallet-id',homeWalletId);else localStorage.removeItem('spenza-home-wallet-id')},[homeWalletId])
@@ -96,7 +99,7 @@ export default function App(){
  const deleteWallet=(id:string)=>{const wallet=data.wallets.find(w=>w.id===id);if(!wallet)return;const transactionCount=data.transactions.filter(t=>t.walletId===id||t.toWalletId===id).length;const billCount=data.bills.filter(b=>b.walletId===id).length;const detail=[transactionCount?`${transactionCount} transaction${transactionCount===1?'':'s'}`:'',billCount?`${billCount} bill${billCount===1?'':'s'}`:''].filter(Boolean).join(' and ');setDialog({title:'Delete account?',message:`${wallet.name} will be permanently deleted${detail?` together with ${detail}`:''}.`,kind:'danger',confirmLabel:'Delete',onConfirm:async()=>{const next=await localRepository.deleteWallet(id);setData(next)}})}
  const resetAll=()=>setDialog({title:'Reset Spenza?',message:'All local wallets and transactions will be permanently cleared. This cannot be undone.',kind:'danger',confirmLabel:'Reset data',onConfirm:()=>{setData(defaultData);setRateInput(String(defaultData.usdToLbpRate||89500))}})
  const confirmDialog=async()=>{const action=dialog?.onConfirm;if(!action||dialogBusy)return;setDialogBusy(true);try{await action();setDialog(current=>current?.onConfirm===action?null:current)}finally{setDialogBusy(false)}}
- const commitRate=()=>{const n=Number(rateInput);if(n>0){setData(d=>({...d,usdToLbpRate:n}));setRateInput(String(n))}else setRateInput(String(rate))}
+ const commitRate=()=>{const n=Number(rateInput);if(n>0){localStorage.setItem('spenza-usd-to-lbp-rate',String(n));setData(d=>({...d,usdToLbpRate:n}));setRateInput(String(n))}else setRateInput(String(rate))}
  const openWalletActivity=(id:string)=>{setActivityWalletId(id);setTab('Activity')}
  const openAllActivity=()=>{setActivityWalletId(null);setTab('Activity')}
  const inInsightPeriod=(txDate:string)=>{if(insightPeriod==='daily')return txDate===insightDate;if(insightPeriod==='monthly')return txDate.slice(0,7)===insightDate.slice(0,7);return txDate.slice(0,4)===insightDate.slice(0,4)}
