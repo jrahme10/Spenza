@@ -1,4 +1,4 @@
-import { loadData, Transaction } from './db'
+import { loadData, Transaction, Wallet } from './db'
 
 let renderToken = 0
 
@@ -24,22 +24,55 @@ function inPeriod(date: string, selectedDate: string, period: 'daily' | 'monthly
 
 function searchableText(
   transaction: Transaction,
-  accountName: string,
-  destinationName: string,
+  source?: Wallet,
+  destination?: Wallet,
 ) {
+  const sourceCurrency = source?.currency || ''
+  const formattedAmount = sourceCurrency
+    ? money(transaction.amount, sourceCurrency)
+    : String(transaction.amount)
+  const destinationAmount =
+    transaction.type === 'transfer' && destination && transaction.exchangeRate
+      ? transaction.amount * transaction.exchangeRate
+      : undefined
+  const formattedDestinationAmount =
+    destinationAmount !== undefined && destination
+      ? money(destinationAmount, destination.currency)
+      : undefined
+
   return [
     transaction.title,
     transaction.category,
     transaction.note,
     transaction.type,
+    transaction.type === 'expense' ? 'expense spent spending purchase payment' : '',
+    transaction.type === 'income' ? 'income received earning salary deposit' : '',
+    transaction.type === 'transfer' ? 'transfer moved sent received' : '',
     transaction.amount,
+    formattedAmount,
     transaction.date,
-    accountName,
-    destinationName,
+    transaction.exchangeRate,
+    source?.name,
+    source?.currency,
+    destination?.name,
+    destination?.currency,
+    destinationAmount,
+    formattedDestinationAmount,
+    transaction.createdAt,
+    transaction.updatedAt,
   ]
-    .filter((value) => value !== undefined && value !== null)
+    .filter((value) => value !== undefined && value !== null && value !== '')
     .join(' ')
     .toLowerCase()
+}
+
+function matchesQuery(text: string, query: string) {
+  const terms = query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+  return terms.every((term) => text.includes(term))
 }
 
 function money(value: number, currency: 'USD' | 'LBP') {
@@ -58,7 +91,8 @@ async function renderResults(page: HTMLElement, host: HTMLElement, input: HTMLIn
   const selectors = page.querySelectorAll<HTMLSelectElement>('.insightSelectors select')
   const accountId = selectors[0]?.value || ''
   const category = selectors[1]?.value || 'all'
-  const selectedDate = page.querySelector<HTMLInputElement>('.insightNavigator input[type="date"]')?.value || ''
+  const selectedDate =
+    page.querySelector<HTMLInputElement>('.insightNavigator input[type="date"]')?.value || ''
   const period = getPeriod(page)
   const query = input.value.trim().toLowerCase()
 
@@ -71,9 +105,9 @@ async function renderResults(page: HTMLElement, host: HTMLElement, input: HTMLIn
       if (selectedDate && !inPeriod(transaction.date, selectedDate, period)) return false
       if (category !== 'all' && transaction.category !== category) return false
       if (!query) return true
-      const source = walletById.get(transaction.walletId)?.name || ''
-      const destination = walletById.get(transaction.toWalletId || '')?.name || ''
-      return searchableText(transaction, source, destination).includes(query)
+      const source = walletById.get(transaction.walletId)
+      const destination = walletById.get(transaction.toWalletId || '')
+      return matchesQuery(searchableText(transaction, source, destination), query)
     })
     .sort(
       (a, b) =>
@@ -115,17 +149,20 @@ async function renderResults(page: HTMLElement, host: HTMLElement, input: HTMLIn
     const title = document.createElement('b')
     title.textContent = transaction.category || transaction.title || 'Transaction'
     const meta = document.createElement('span')
-    const description = transaction.title && transaction.title !== transaction.category ? transaction.title : ''
-    const accountText = transaction.type === 'transfer' && destination
-      ? `${source?.name || 'Account'} → ${destination.name}`
-      : source?.name || 'Account'
+    const description =
+      transaction.title && transaction.title !== transaction.category ? transaction.title : ''
+    const accountText =
+      transaction.type === 'transfer' && destination
+        ? `${source?.name || 'Account'} → ${destination.name}`
+        : source?.name || 'Account'
     meta.textContent = [accountText, description, transaction.note].filter(Boolean).join(' · ')
     main.append(title, meta)
 
     const amount = document.createElement('div')
     amount.className = 'insightsSearchAmount'
     const value = document.createElement('strong')
-    const sign = transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '−' : '↔ '
+    const sign =
+      transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '−' : '↔ '
     value.textContent = `${sign}${money(transaction.amount, source?.currency || 'USD')}`
     const date = document.createElement('small')
     date.textContent = transaction.date
@@ -146,7 +183,7 @@ function install(page: HTMLElement) {
   host.innerHTML = `
     <label class="insightsSearchField">
       <span class="insightsSearchIcon" aria-hidden="true">⌕</span>
-      <input type="search" inputmode="search" autocomplete="off" placeholder="Search category, description, note, account, amount…" aria-label="Search Insight transactions" />
+      <input type="search" inputmode="search" autocomplete="off" placeholder="Search category, description, note, account, amount, date…" aria-label="Search Insight transactions" />
       <button type="button" class="insightsSearchClear" aria-label="Clear search">×</button>
     </label>
     <div class="insightsSearchResults" hidden></div>
