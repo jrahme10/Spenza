@@ -36,6 +36,7 @@ import './family.css'
 import './no-bottom-gap.css'
 import './default-wallet.css'
 import './recent-transactions.css'
+import './insights-search.css'
 import { registerPwa } from './lib/pwa'
 import { loadData } from './lib/db'
 import { syncManager } from './lib/syncManager'
@@ -43,6 +44,7 @@ import { initNoteSuggestions } from './lib/noteSuggestions'
 import { initTransactionFormKeyboard } from './lib/transactionFormKeyboard'
 import { initTransactionDatePicker } from './lib/transactionDatePicker'
 import { initDefaultWallet } from './lib/defaultWallet'
+import { initInsightsSearch } from './lib/insightsSearch'
 
 function financialFingerprint(data: Awaited<ReturnType<typeof loadData>>) {
   return JSON.stringify({
@@ -126,6 +128,7 @@ function bootstrap() {
   initTransactionFormKeyboard()
   initTransactionDatePicker()
   initDefaultWallet()
+  initInsightsSearch()
   registerPwa()
 }
 bootstrap()
