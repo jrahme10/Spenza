@@ -18,9 +18,23 @@ function transactionSheet(el: Element) {
   )
 }
 
+function selectedAccountId() {
+  const homeAccount = document.querySelector<HTMLSelectElement>(
+    '.homeScreen .homeAccountSelector select',
+  )
+  if (homeAccount?.value) return homeAccount.value
+
+  const insightAccount = document.querySelector<HTMLSelectElement>(
+    '.page.refPage .insightSelectors label:first-child select',
+  )
+  if (insightAccount?.value) return insightAccount.value
+
+  return ''
+}
+
 async function applyDefaultToAddTransaction() {
-  const defaultWalletId = localStorage.getItem(STORAGE_KEY) || ''
-  if (!defaultWalletId) return
+  const preferredWalletId = selectedAccountId() || localStorage.getItem(STORAGE_KEY) || ''
+  if (!preferredWalletId) return
   const sheet = Array.from(document.querySelectorAll<HTMLElement>('.sheet.refSheet')).find(
     transactionSheet,
   )
@@ -29,10 +43,10 @@ async function applyDefaultToAddTransaction() {
     label.textContent?.trim().startsWith('Account'),
   )
   const select = accountLabel?.querySelector<HTMLSelectElement>('select')
-  if (!select || !Array.from(select.options).some((option) => option.value === defaultWalletId))
+  if (!select || !Array.from(select.options).some((option) => option.value === preferredWalletId))
     return
   sheet.dataset.defaultWalletApplied = '1'
-  setNativeSelectValue(select, defaultWalletId)
+  setNativeSelectValue(select, preferredWalletId)
 }
 
 async function renderSettingsPreference() {
