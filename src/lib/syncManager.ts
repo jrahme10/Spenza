@@ -6,6 +6,7 @@ import {
 } from './supabaseSync'
 import { getSupabaseClient, getSupabaseUserId } from './supabaseClient'
 import { syncAccountSettings } from './accountSettingsSync'
+import { localRepository } from './repository'
 
 export type GlobalSyncState = {
   status: 'idle' | 'syncing' | 'synced' | 'error' | 'signed-out' | 'cancelled'
@@ -81,8 +82,15 @@ async function runAllSync(
 ): Promise<SupabaseSyncResult> {
   const financial = await syncSupabaseIfAuthenticated({ signal, onProgress })
   if (financial.status !== 'synced') return financial
-  const settingsData = await syncAccountSettings(financial.data)
-  return { ...financial, data: settingsData }
+
+  await syncAccountSettings(financial.data)
+
+  // A transaction can be saved locally while a cloud sync that started earlier is still running.
+  // The repository protects that local write when the sync snapshot is persisted, so always return
+  // the latest persisted snapshot instead of the older in-memory sync result. This prevents the UI
+  // from briefly replacing a newly added transaction with stale cloud data.
+  const latest = await localRepository.getSnapshot()
+  return { ...financial, data: latest }
 }
 
 export const syncManager = {
