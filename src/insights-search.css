@@ -72,7 +72,7 @@
 .insightsSearchRow {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
 }
@@ -122,6 +122,53 @@
 .insightsSearchAmount small {
   font-size: 10px;
   color: var(--muted);
+}
+
+.insightsSearchEdit {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface2);
+  color: var(--muted);
+  padding: 0;
+}
+
+.insightsSearchEdit svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.insightsSearchEdit:hover,
+.insightsSearchEdit:focus-visible {
+  color: var(--accent);
+  border-color: rgba(24, 223, 177, 0.35);
+}
+
+.insightsEditSheet {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+.insightsEditSheet .insightsEditClose {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.insightsEditError {
+  margin: 8px 0 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 93, 105, 0.11);
+  color: var(--danger);
+  font-size: 12px;
 }
 
 .insightsSearchEmpty {
