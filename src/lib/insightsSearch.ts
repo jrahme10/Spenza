@@ -1,5 +1,4 @@
-import { loadData, Transaction, TransactionType, Wallet } from './db'
-import { localRepository } from './repository'
+import { loadData, Transaction, Wallet } from './db'
 
 let renderToken = 0
 
@@ -76,146 +75,12 @@ function matchesQuery(text: string, query: string) {
   return terms.every((term) => text.includes(term))
 }
 
-function pairRate(from: Wallet | undefined, to: Wallet | undefined, usdToLbpRate: number) {
-  if (!from || !to || from.currency === to.currency) return 1
-  return from.currency === 'USD' ? usdToLbpRate : 1 / usdToLbpRate
-}
-
-async function openInsightsEditor(transactionId: string) {
-  document.querySelector('.insightsEditOverlay')?.remove()
-  const data = await loadData().catch(() => null)
-  const transaction = data?.transactions.find((item) => item.id === transactionId)
-  if (!data || !transaction) return
-
-  const overlay = document.createElement('div')
-  overlay.className = 'overlay insightsEditOverlay'
-  const sheet = document.createElement('div')
-  sheet.className = 'sheet refSheet insightsEditSheet'
-  sheet.innerHTML = `
-    <div class="sheetTop">
-      <div><span class="eyebrow">EDIT</span><h2>Edit Transaction</h2></div>
-      <button type="button" class="close insightsEditClose" aria-label="Close">×</button>
-    </div>
-    <label>Type<select class="insightsEditType"></select></label>
-    <label>Date<input class="insightsEditDate" type="date" /></label>
-    <label>Account<select class="insightsEditAccount"></select></label>
-    <label class="insightsEditToAccountLabel">To Account<select class="insightsEditToAccount"></select></label>
-    <label>Amount<input class="insightsEditAmount" type="number" inputmode="decimal" /></label>
-    <label class="insightsEditCategoryLabel">Category<select class="insightsEditCategory"></select></label>
-    <label>Description<input class="insightsEditDescription" type="text" autocomplete="off" /></label>
-    <label>Note<input class="insightsEditNote" type="text" autocomplete="off" /></label>
-    <div class="insightsEditError" hidden></div>
-    <button type="button" class="primary insightsEditSave">Save Changes</button>
-  `
-  overlay.appendChild(sheet)
-  document.body.appendChild(overlay)
-
-  const typeSelect = sheet.querySelector<HTMLSelectElement>('.insightsEditType')!
-  const dateInput = sheet.querySelector<HTMLInputElement>('.insightsEditDate')!
-  const accountSelect = sheet.querySelector<HTMLSelectElement>('.insightsEditAccount')!
-  const toAccountSelect = sheet.querySelector<HTMLSelectElement>('.insightsEditToAccount')!
-  const toAccountLabel = sheet.querySelector<HTMLElement>('.insightsEditToAccountLabel')!
-  const amountInput = sheet.querySelector<HTMLInputElement>('.insightsEditAmount')!
-  const categorySelect = sheet.querySelector<HTMLSelectElement>('.insightsEditCategory')!
-  const categoryLabel = sheet.querySelector<HTMLElement>('.insightsEditCategoryLabel')!
-  const descriptionInput = sheet.querySelector<HTMLInputElement>('.insightsEditDescription')!
-  const noteInput = sheet.querySelector<HTMLInputElement>('.insightsEditNote')!
-  const error = sheet.querySelector<HTMLElement>('.insightsEditError')!
-  const save = sheet.querySelector<HTMLButtonElement>('.insightsEditSave')!
-
-  for (const value of ['expense', 'income', 'transfer'] as TransactionType[]) {
-    const option = document.createElement('option')
-    option.value = value
-    option.textContent = value[0].toUpperCase() + value.slice(1)
-    typeSelect.appendChild(option)
-  }
-  for (const wallet of data.wallets) {
-    const option = document.createElement('option')
-    option.value = wallet.id
-    option.textContent = `${wallet.name} (${wallet.currency})`
-    accountSelect.appendChild(option)
-    toAccountSelect.appendChild(option.cloneNode(true))
-  }
-  for (const category of data.categories) {
-    const option = document.createElement('option')
-    option.value = category
-    option.textContent = category
-    categorySelect.appendChild(option)
-  }
-
-  typeSelect.value = transaction.type
-  dateInput.value = transaction.date
-  accountSelect.value = transaction.walletId
-  toAccountSelect.value = transaction.toWalletId || data.wallets.find((w) => w.id !== transaction.walletId)?.id || ''
-  amountInput.value = String(transaction.amount)
-  categorySelect.value = transaction.category
-  descriptionInput.value = transaction.title === transaction.category ? '' : transaction.title
-  noteInput.value = transaction.note || ''
-
-  const syncTypeFields = () => {
-    const isTransfer = typeSelect.value === 'transfer'
-    toAccountLabel.hidden = !isTransfer
-    categoryLabel.hidden = isTransfer
-  }
-  syncTypeFields()
-  typeSelect.addEventListener('change', syncTypeFields)
-
-  const close = () => overlay.remove()
-  overlay.addEventListener('click', (event) => {
-    if (event.target === overlay) close()
-  })
-  sheet.querySelector('.insightsEditClose')?.addEventListener('click', close)
-
-  save.addEventListener('click', async () => {
-    const amount = Number(amountInput.value)
-    const type = typeSelect.value as TransactionType
-    const walletId = accountSelect.value
-    const toWalletId = type === 'transfer' ? toAccountSelect.value : undefined
-    error.hidden = true
-    if (!walletId || !amount || amount <= 0 || !dateInput.value) {
-      error.textContent = 'Please enter a valid account, amount, and date.'
-      error.hidden = false
-      return
-    }
-    if (type === 'transfer' && (!toWalletId || toWalletId === walletId)) {
-      error.textContent = 'Choose a different destination account.'
-      error.hidden = false
-      return
-    }
-
-    const sourceWallet = data.wallets.find((w) => w.id === walletId)
-    const destinationWallet = data.wallets.find((w) => w.id === toWalletId)
-    const category = type === 'transfer' ? 'Transfer' : categorySelect.value || 'Other'
-    const title = descriptionInput.value.trim() || (type === 'expense' ? category : 'Transaction')
-    const updated: Transaction = {
-      ...transaction,
-      type,
-      walletId,
-      toWalletId,
-      exchangeRate:
-        type === 'transfer'
-          ? pairRate(sourceWallet, destinationWallet, data.usdToLbpRate || 89500)
-          : undefined,
-      amount,
-      date: dateInput.value,
-      category,
-      title,
-      note: noteInput.value.trim() || undefined,
-      updatedAt: new Date().toISOString(),
-    }
-
-    save.disabled = true
-    save.textContent = 'Saving…'
-    try {
-      await localRepository.upsertTransaction(updated)
-      window.location.reload()
-    } catch {
-      save.disabled = false
-      save.textContent = 'Save Changes'
-      error.textContent = 'Could not save the transaction. Please try again.'
-      error.hidden = false
-    }
-  })
+function openTransactionEditor(transactionId: string) {
+  window.dispatchEvent(
+    new CustomEvent('spenza:edit-transaction', {
+      detail: { id: transactionId },
+    }),
+  )
 }
 
 async function renderResults(page: HTMLElement, host: HTMLElement, input: HTMLInputElement) {
@@ -306,10 +171,14 @@ async function renderResults(page: HTMLElement, host: HTMLElement, input: HTMLIn
     const edit = document.createElement('button')
     edit.type = 'button'
     edit.className = 'insightsSearchEdit'
-    edit.setAttribute('aria-label', `Edit ${transaction.title || transaction.category || 'transaction'}`)
+    edit.setAttribute(
+      'aria-label',
+      `Edit ${transaction.title || transaction.category || 'transaction'}`,
+    )
     edit.title = 'Edit transaction'
-    edit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>'
-    edit.addEventListener('click', () => void openInsightsEditor(transaction.id))
+    edit.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>'
+    edit.addEventListener('click', () => openTransactionEditor(transaction.id))
 
     row.append(main, amount, edit)
     results.appendChild(row)
