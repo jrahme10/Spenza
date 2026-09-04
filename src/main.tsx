@@ -4,6 +4,7 @@ import App from './App'
 import SyncStatusPill from './components/SyncStatusPill'
 import PwaUpdateBanner from './components/PwaUpdateBanner'
 import TransactionFieldFlow from './components/TransactionFieldFlow'
+import InsightsTransactionEditor from './components/InsightsTransactionEditor'
 import { initTheme } from './components/ThemeControl'
 import { initDynamicGreeting } from './dynamic-greeting'
 import './styles.css'
@@ -117,6 +118,7 @@ function bootstrap() {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <App />
+      <InsightsTransactionEditor />
       <TransactionFieldFlow />
       <SyncStatusPill />
       <PwaUpdateBanner />
