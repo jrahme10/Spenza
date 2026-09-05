@@ -212,7 +212,7 @@ export default function TransactionCategoryPicker({
                   >
                     <button
                       type="button"
-                      className={`expandableCategoryMain ${selected.parent === parent ? 'selected' : ''}`}
+                      className={`expandableCategoryMain ${value === parent ? 'selected' : ''}`}
                       onClick={() => chooseParent(parent)}
                     >
                       <span>{parent}</span>
@@ -226,6 +226,13 @@ export default function TransactionCategoryPicker({
                     </button>
                     {isExpanded && children.length > 0 && (
                       <div className="expandableSubcategoryGrid">
+                        <button
+                          type="button"
+                          className={value === parent ? 'selected' : ''}
+                          onClick={() => finish(directFor(parent)?.raw || parent)}
+                        >
+                          {parent}
+                        </button>
                         {children.map((item) => (
                           <button
                             type="button"
