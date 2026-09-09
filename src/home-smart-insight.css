@@ -44,9 +44,17 @@
   background: linear-gradient(135deg, rgba(143, 41, 55, 0.55), rgba(78, 26, 38, 0.7));
   box-shadow: inset 0 1px 0 rgba(255, 198, 202, 0.1);
 }
-.homeSmartInsight.over svg,
-.homeSmartInsight.over .homeBudgetBar i {
+.homeSmartInsight.over svg {
+  width: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 6px;
   color: #ff5f68;
+  border: 1px solid rgba(255, 133, 141, 0.78);
+  border-radius: 50%;
+  background: rgba(255, 95, 104, 0.14);
+}
+.homeSmartInsight.over .homeBudgetBar i {
   background: #ff5f68;
 }
 .homeSmartInsight.over b {
