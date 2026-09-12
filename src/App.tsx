@@ -1143,20 +1143,42 @@ export default function App() {
                         ),
                       )
                         .sort(([a], [b]) => b.localeCompare(a))
-                        .map(([day, items]) => (
-                          <section className="homeDayGroup" key={day}>
-                            <div className="homeDayHeader">
-                              {new Date(day + 'T12:00:00').toLocaleDateString('en-US', {
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric',
-                              })}
-                            </div>
-                            {items.map((t) => (
-                              <TxRow t={t} recent key={t.id} />
-                            ))}
-                          </section>
-                        ))
+                        .map(([day, items]) => {
+                          const dayTotal = items.reduce((total, t) => {
+                            if (!homeWallet) return total
+                            if (t.type === 'income' && t.walletId === homeWallet.id)
+                              return total + t.amount
+                            if (t.type === 'expense' && t.walletId === homeWallet.id)
+                              return total - t.amount
+                            if (t.type === 'transfer') {
+                              if (t.walletId === homeWallet.id) return total - t.amount
+                              if (t.toWalletId === homeWallet.id)
+                                return total + (t.exchangeRate ? t.amount * t.exchangeRate : t.amount)
+                            }
+                            return total
+                          }, 0)
+                          return (
+                            <section className="homeDayGroup" key={day}>
+                              <div className="homeDayHeader">
+                                <span>
+                                  {new Date(day + 'T12:00:00').toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                  })}
+                                </span>
+                                {homeWallet && (
+                                  <strong className={dayTotal >= 0 ? 'positive' : 'negative'}>
+                                    Total {money(dayTotal, homeWallet.currency)}
+                                  </strong>
+                                )}
+                              </div>
+                              {items.map((t) => (
+                                <TxRow t={t} recent key={t.id} />
+                              ))}
+                            </section>
+                          )
+                        })
                     : homePeriodTx
                         .slice(0, homeRecentLimit)
                         .map((t) => <TxRow t={t} recent key={t.id} />)}
