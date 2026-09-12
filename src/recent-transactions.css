@@ -1,3 +1,25 @@
 .homeActivity .txMain span {
   font-size: 13px;
 }
+
+
+.homeDayHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.homeDayHeader strong {
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.homeDayHeader strong.positive {
+  color: var(--accent);
+}
+
+.homeDayHeader strong.negative {
+  color: var(--danger, #ff5f68);
+}
