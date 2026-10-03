@@ -206,6 +206,7 @@
 :root[data-theme] .primarySmall,
 :root[data-theme] .primary {
   background: var(--accent) !important;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 35%, transparent) !important;
 }
 :root[data-theme] .filters .selected,
 :root[data-theme] .typeTabs .selected {
