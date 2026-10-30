@@ -195,9 +195,13 @@ export default function App() {
   }, [ready])
   useEffect(() => {
     if (!ready) return
+    if (
+      insightWalletId !== 'all' &&
+      insightWalletId &&
+      !data.wallets.some((w) => w.id === insightWalletId)
+    )
+      setInsightWalletId(data.wallets[0]?.id || 'all')
     if (!insightWalletId && data.wallets[0]) setInsightWalletId(data.wallets[0].id)
-    if (insightWalletId && !data.wallets.some((w) => w.id === insightWalletId))
-      setInsightWalletId(data.wallets[0]?.id || '')
   }, [data.wallets, insightWalletId, ready])
   useEffect(() => {
     if (!ready) return
@@ -744,21 +748,28 @@ export default function App() {
     .reduce((sum, t) => sum + activityAmountInDisplayCurrency(t), 0)
   const activityNet = activityIncome - activityExpense
   const insightWallet = data.wallets.find((w) => w.id === insightWalletId)
+  const insightAllAccounts = insightWalletId === 'all'
+  const insightCurrency: Currency = insightAllAccounts ? 'USD' : insightWallet?.currency || 'USD'
   const insightTransactions = data.transactions.filter(
     (t) =>
-      t.walletId === insightWalletId &&
+      (insightAllAccounts || t.walletId === insightWalletId) &&
       inInsightPeriod(t.date) &&
       (insightCategory === 'all' || t.category === insightCategory),
   )
+  const insightAmount = (t: Transaction) => {
+    const sourceCurrency =
+      data.wallets.find((w) => w.id === t.walletId)?.currency || insightCurrency
+    return convert(t.amount, sourceCurrency, insightCurrency)
+  }
   const insightExpenses = insightTransactions
     .filter((t) => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0)
+    .reduce((sum, t) => sum + insightAmount(t), 0)
   const insightIncome = insightTransactions
     .filter((t) => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0)
+    .reduce((sum, t) => sum + insightAmount(t), 0)
   const insightTransfers = insightTransactions
     .filter((t) => t.type === 'transfer')
-    .reduce((sum, t) => sum + t.amount, 0)
+    .reduce((sum, t) => sum + insightAmount(t), 0)
   const insightPeriodLabel =
     insightPeriod === 'daily'
       ? insightDate
@@ -1290,6 +1301,7 @@ export default function App() {
                       value={insightWalletId}
                       onChange={(e) => setInsightWalletId(e.target.value)}
                     >
+                      <option value="all">All accounts</option>
                       {data.wallets.map((w) => (
                         <option key={w.id} value={w.id}>
                           {w.name} ({w.currency})
@@ -1312,18 +1324,22 @@ export default function App() {
                     </select>
                   </label>
                 </div>
-                <BudgetPlanner
-                  wallet={insightWallet}
-                  transactions={data.transactions}
-                  categories={data.categories}
-                  date={insightDate}
-                />
-                <SmartMoneyHub
-                  wallet={insightWallet}
-                  transactions={data.transactions}
-                  date={insightDate}
-                />
                 {insightWallet && (
+                  <>
+                    <BudgetPlanner
+                      wallet={insightWallet}
+                      transactions={data.transactions}
+                      categories={data.categories}
+                      date={insightDate}
+                    />
+                    <SmartMoneyHub
+                      wallet={insightWallet}
+                      transactions={data.transactions}
+                      date={insightDate}
+                    />
+                  </>
+                )}
+                {(insightWallet || insightAllAccounts) && (
                   <>
                     <article className="categoryPanel">
                       <div className="refSectionHead compact">
@@ -1334,12 +1350,12 @@ export default function App() {
                           .filter(
                             (t) =>
                               t.type === 'expense' &&
-                              t.walletId === insightWallet.id &&
+                              (insightAllAccounts || t.walletId === insightWallet?.id) &&
                               inInsightPeriod(t.date) &&
                               t.category === c &&
                               (insightCategory === 'all' || c === insightCategory),
                           )
-                          .reduce((sum, t) => sum + t.amount, 0)
+                          .reduce((sum, t) => sum + insightAmount(t), 0)
                         if (!value) return null
                         const pct = insightExpenses
                           ? Math.min(100, (value / insightExpenses) * 100)
@@ -1350,7 +1366,7 @@ export default function App() {
                             <div>
                               <i style={{ width: `${pct}%` }} />
                             </div>
-                            <b>{money(value, insightWallet.currency)}</b>
+                            <b>{money(value, insightCurrency)}</b>
                           </div>
                         )
                       })}
