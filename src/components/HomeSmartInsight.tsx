@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Sparkles } from 'lucide-react'
-import type { Transaction, Wallet } from '../lib/db'
-type Props = { wallet?: Wallet; transactions: Transaction[]; date: string }
+import type { Currency, Transaction, Wallet } from '../lib/db'
+type Props = { wallets: Wallet[]; transactions: Transaction[]; date: string; rate: number }
 type Budget = { monthly: number; categories: Record<string, number> }
 const fmt = (n: number, c: 'USD' | 'LBP') =>
   new Intl.NumberFormat('en-US', {
@@ -9,35 +9,33 @@ const fmt = (n: number, c: 'USD' | 'LBP') =>
     currency: c,
     maximumFractionDigits: c === 'LBP' ? 0 : 2,
   }).format(n)
-export default function HomeSmartInsight({ wallet, transactions, date }: Props) {
+export default function HomeSmartInsight({ wallets, transactions, date, rate }: Props) {
+  const currency: Currency = 'USD'
+  const amountInUsd = (t: Transaction) =>
+    (wallets.find((w) => w.id === t.walletId)?.currency || 'USD') === 'LBP'
+      ? t.amount / rate
+      : t.amount
   const [budget, setBudget] = useState<Budget | null>(null)
   useEffect(() => {
-    if (!wallet) {
+    if (!wallets.length) {
       setBudget(null)
       return
     }
     try {
-      const raw = localStorage.getItem(`spenza-budget:${wallet.id}`)
+      const raw = localStorage.getItem('spenza-budget:all')
       setBudget(raw ? JSON.parse(raw) : null)
     } catch {
       setBudget(null)
     }
-  }, [wallet?.id, date])
+  }, [wallets.length, date])
   const spent = useMemo(
     () =>
-      wallet
-        ? transactions
-            .filter(
-              (t) =>
-                t.walletId === wallet.id &&
-                t.type === 'expense' &&
-                t.date.slice(0, 7) === date.slice(0, 7),
-            )
-            .reduce((s, t) => s + t.amount, 0)
-        : 0,
-    [wallet, transactions, date],
+      transactions
+        .filter((t) => t.type === 'expense' && t.date.slice(0, 7) === date.slice(0, 7))
+        .reduce((s, t) => s + amountInUsd(t), 0),
+    [wallets, transactions, date, rate],
   )
-  if (!wallet || !budget?.monthly) return null
+  if (!wallets.length || !budget?.monthly) return null
   const remaining = budget.monthly - spent,
     pct = Math.round((spent / budget.monthly) * 100)
   return (
@@ -47,11 +45,11 @@ export default function HomeSmartInsight({ wallet, transactions, date }: Props) 
         <span>
           <b>
             {remaining < 0
-              ? `${fmt(Math.abs(remaining), wallet.currency)} over budget`
-              : `${fmt(remaining, wallet.currency)} left this month`}
+              ? `${fmt(Math.abs(remaining), currency)} over budget`
+              : `${fmt(remaining, currency)} left this month`}
           </b>
           <small>
-            {pct}% of your {fmt(budget.monthly, wallet.currency)} budget used
+            {pct}% of your {fmt(budget.monthly, currency)} budget used
           </small>
         </span>
       </div>
