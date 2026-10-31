@@ -1113,9 +1113,10 @@ export default function App() {
               </button>
             </section>
             <HomeSmartInsight
-              wallet={homeWallet}
+              wallets={data.wallets}
               transactions={data.transactions}
               date={homeDate}
+              rate={rate}
             />
             <div className="activitySummary homeCashflowSummary">
               <article>
