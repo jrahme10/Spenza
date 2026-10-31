@@ -144,7 +144,7 @@ export default function BudgetPlanner({ wallets, transactions, categories, date,
             </span>
             <h2>{budget.monthly ? money(budget.monthly, currency) : 'Not set'}</h2>
             <small>
-              {wallet.name} ·{' '}
+              All accounts · 
               {new Date(`${month}-01T12:00:00`).toLocaleDateString('en-US', {
                 month: 'long',
                 year: 'numeric',
