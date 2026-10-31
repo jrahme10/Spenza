@@ -1324,14 +1324,15 @@ export default function App() {
                     </select>
                   </label>
                 </div>
+                <BudgetPlanner
+                  wallets={data.wallets}
+                  transactions={data.transactions}
+                  categories={data.categories}
+                  date={insightDate}
+                  rate={rate}
+                />
                 {insightWallet && (
                   <>
-                    <BudgetPlanner
-                      wallet={insightWallet}
-                      transactions={data.transactions}
-                      categories={data.categories}
-                      date={insightDate}
-                    />
                     <SmartMoneyHub
                       wallet={insightWallet}
                       transactions={data.transactions}
