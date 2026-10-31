@@ -3,7 +3,7 @@ import { Pencil, Target, X } from 'lucide-react'
 import type { Currency, Transaction, Wallet } from '../lib/db'
 import { getSupabaseClient } from '../lib/supabaseClient'
 
-type Props = { wallet?: Wallet; transactions: Transaction[]; categories: string[]; date: string }
+type Props = { wallets: Wallet[]; transactions: Transaction[]; categories: string[]; date: string; rate: number }
 type BudgetState = { monthly: number; categories: Record<string, number> }
 type BudgetPayload = BudgetState & { walletId: string; updatedAt: string }
 const key = (walletId: string) => `spenza-budget:${walletId}`
@@ -25,7 +25,13 @@ const normalize = (value: any): BudgetState => {
   }
 }
 
-export default function BudgetPlanner({ wallet, transactions, categories, date }: Props) {
+export default function BudgetPlanner({ wallets, transactions, categories, date, rate }: Props) {
+  const budgetId = 'all'
+  const currency: Currency = 'USD'
+  const convertToUsd = (amount: number, walletId: string) => {
+    const source = wallets.find((w) => w.id === walletId)?.currency || 'USD'
+    return source === 'LBP' ? amount / rate : amount
+  }
   const [budget, setBudget] = useState<BudgetState>(empty)
   const [editing, setEditing] = useState(false)
   const [monthly, setMonthly] = useState('')
@@ -34,13 +40,13 @@ export default function BudgetPlanner({ wallet, transactions, categories, date }
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      if (!wallet) {
+      if (!wallets.length) {
         setBudget(empty)
         return
       }
       let local = empty
       try {
-        const raw = localStorage.getItem(key(wallet.id))
+        const raw = localStorage.getItem(key(budgetId))
         local = normalize(raw ? JSON.parse(raw) : empty)
       } catch {}
       setBudget(local)
@@ -54,12 +60,12 @@ export default function BudgetPlanner({ wallet, transactions, categories, date }
         .from('spenza_budgets')
         .select('payload')
         .eq('owner_id', session.user.id)
-        .eq('id', wallet.id)
+        .eq('id', budgetId)
         .maybeSingle()
       if (error || cancelled) return
       if (data?.payload) {
         const remote = normalize(data.payload)
-        localStorage.setItem(key(wallet.id), JSON.stringify(remote))
+        localStorage.setItem(key(budgetId), JSON.stringify(remote))
         setBudget(remote)
         setSyncLabel('Synced')
       }
@@ -68,22 +74,20 @@ export default function BudgetPlanner({ wallet, transactions, categories, date }
     return () => {
       cancelled = true
     }
-  }, [wallet?.id])
+  }, [wallets.length])
   const month = date.slice(0, 7)
   const expenses = useMemo(
     () =>
-      wallet
-        ? transactions.filter(
-            (t) => t.type === 'expense' && t.walletId === wallet.id && t.date.slice(0, 7) === month,
-          )
-        : [],
-    [wallet?.id, transactions, month],
+      transactions.filter(
+        (t) => t.type === 'expense' && t.date.slice(0, 7) === month,
+      ),
+    [transactions, month],
   )
-  const spent = expenses.reduce((sum, t) => sum + t.amount, 0)
+  const spent = expenses.reduce((sum, t) => sum + convertToUsd(t.amount, t.walletId), 0)
   const remaining = Math.max(0, budget.monthly - spent)
   const pct = budget.monthly ? Math.min(100, (spent / budget.monthly) * 100) : 0
   const categorySpent = (name: string) =>
-    expenses.filter((t) => t.category === name).reduce((sum, t) => sum + t.amount, 0)
+    expenses.filter((t) => t.category === name).reduce((sum, t) => sum + convertToUsd(t.amount, t.walletId), 0)
   const open = () => {
     setMonthly(budget.monthly ? String(budget.monthly) : '')
     setCategoryValues(
@@ -94,7 +98,7 @@ export default function BudgetPlanner({ wallet, transactions, categories, date }
     setEditing(true)
   }
   const save = async () => {
-    if (!wallet) return
+    if (!wallets.length) return
     const categoryEntries: Array<[string, number]> = categories.map((c) => [
       c,
       Math.max(0, Number(categoryValues[c]) || 0),
@@ -103,7 +107,7 @@ export default function BudgetPlanner({ wallet, transactions, categories, date }
       monthly: Math.max(0, Number(monthly) || 0),
       categories: Object.fromEntries(categoryEntries.filter(([, v]) => v > 0)),
     }
-    localStorage.setItem(key(wallet.id), JSON.stringify(next))
+    localStorage.setItem(key(budgetId), JSON.stringify(next))
     setBudget(next)
     setEditing(false)
     setSyncLabel('Saved')
@@ -115,11 +119,11 @@ export default function BudgetPlanner({ wallet, transactions, categories, date }
       } = await supabase.auth.getSession()
       if (!session) return
       const updatedAt = new Date().toISOString()
-      const payload: BudgetPayload = { ...next, walletId: wallet.id, updatedAt }
+      const payload: BudgetPayload = { ...next, walletId: budgetId, updatedAt }
       const { error } = await supabase
         .from('spenza_budgets')
         .upsert(
-          { owner_id: session.user.id, id: wallet.id, payload, changed_at: updatedAt },
+          { owner_id: session.user.id, id: budgetId, payload, changed_at: updatedAt },
           { onConflict: 'owner_id,id' },
         )
       if (error) throw error
@@ -128,7 +132,7 @@ export default function BudgetPlanner({ wallet, transactions, categories, date }
       setSyncLabel('Saved on device')
     }
   }
-  if (!wallet) return null
+  if (!wallets.length) return null
   return (
     <>
       <section className="budgetCard">
@@ -138,7 +142,7 @@ export default function BudgetPlanner({ wallet, transactions, categories, date }
               <Target size={15} />
               Monthly Budget
             </span>
-            <h2>{budget.monthly ? money(budget.monthly, wallet.currency) : 'Not set'}</h2>
+            <h2>{budget.monthly ? money(budget.monthly, currency) : 'Not set'}</h2>
             <small>
               {wallet.name} ·{' '}
               {new Date(`${month}-01T12:00:00`).toLocaleDateString('en-US', {
@@ -157,11 +161,11 @@ export default function BudgetPlanner({ wallet, transactions, categories, date }
             <div className="budgetNumbers">
               <span>
                 <small>Spent</small>
-                <b>{money(spent, wallet.currency)}</b>
+                <b>{money(spent, currency)}</b>
               </span>
               <span>
                 <small>Remaining</small>
-                <b>{money(remaining, wallet.currency)}</b>
+                <b>{money(remaining, currency)}</b>
               </span>
               <strong>{Math.round(pct)}%</strong>
             </div>
@@ -179,7 +183,7 @@ export default function BudgetPlanner({ wallet, transactions, categories, date }
                     <div>
                       <span>{name}</span>
                       <small>
-                        {money(used, wallet.currency)} / {money(limit, wallet.currency)}
+                        {money(used, currency)} / {money(limit, currency)}
                       </small>
                     </div>
                     <div>
@@ -203,7 +207,7 @@ export default function BudgetPlanner({ wallet, transactions, categories, date }
               <div>
                 <h2>Budget</h2>
                 <small>
-                  {wallet.name} · {wallet.currency}
+                  All accounts · USD
                 </small>
               </div>
               <button onClick={() => setEditing(false)}>
