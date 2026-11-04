@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Bot, MessageCircle, Send, Sparkles, X } from 'lucide-react'
+import { Bot, Send, Sparkles, X } from 'lucide-react'
 import type { Transaction, Wallet } from '../lib/db'
 import { getSupabaseClient } from '../lib/supabaseClient'
 
