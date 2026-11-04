@@ -36,7 +36,7 @@ import AppLockGate from './components/AppLockGate'
 import NotificationCenter, { NotificationBell } from './components/NotificationCenter'
 import TransactionCalendar from './components/TransactionCalendar'
 import BudgetPlanner from './components/BudgetPlanner'
-import SmartMoneyHub from './components/SmartMoneyHub'
+import FloatingSpenzaChat from './components/FloatingSpenzaChat'
 import TransactionCategoryPicker from './components/TransactionCategoryPicker'
 import {
   Currency,
@@ -1332,15 +1332,6 @@ export default function App() {
                   date={insightDate}
                   rate={rate}
                 />
-                {insightWallet && (
-                  <>
-                    <SmartMoneyHub
-                      wallet={insightWallet}
-                      transactions={data.transactions}
-                      date={insightDate}
-                    />
-                  </>
-                )}
                 {(insightWallet || insightAllAccounts) && (
                   <>
                     <article className="categoryPanel">
@@ -1505,6 +1496,7 @@ export default function App() {
             </button>
           ))}
         </nav>
+        <FloatingSpenzaChat wallet={homeWallet || insightWallet} transactions={data.transactions} date={today()} />
         {open && (
           <div className="overlay" onClick={() => setOpen(false)}>
             <div className="sheet refSheet" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
