@@ -282,3 +282,5 @@
 }
 
 .coachDisclaimer{display:block;margin-top:9px;color:var(--muted);font-size:10px;line-height:1.45}.askChips{flex-wrap:wrap}
+
+.coachError{margin-top:9px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,#ef4444 9%,transparent);color:var(--text);font-size:12px;line-height:1.45}.coachLoading{padding:8px 2px;color:var(--muted);font-size:12px}
