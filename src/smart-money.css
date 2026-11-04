@@ -280,3 +280,5 @@
     transform: translateX(-50%);
   }
 }
+
+.coachDisclaimer{display:block;margin-top:9px;color:var(--muted);font-size:10px;line-height:1.45}.askChips{flex-wrap:wrap}
