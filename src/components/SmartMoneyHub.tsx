@@ -67,7 +67,8 @@ export default function SmartMoneyHub({ wallet, transactions, date }: Props) {
       setQuestion('')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not reach Spenza Coach.'
-      setCoachError(message.includes('429') || message.toLowerCase().includes('limit') ? 'You reached the free daily Spenza Coach limit. Please try again tomorrow.' : message)
+      const status = Number((error as { context?: { status?: number } })?.context?.status || 0)
+      setCoachError(status === 429 || message.includes('429') || message.toLowerCase().includes('limit') ? 'You reached the free daily Spenza Coach limit or Gemini is temporarily busy. Please try again later.' : message)
     } finally { setAsking(false) }
   }
   return <section className="smartMoneyHub">
