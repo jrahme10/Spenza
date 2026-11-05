@@ -40,8 +40,37 @@ Deno.serve(async (req) => {
     const { data: userData, error: authError } = await supabase.auth.getUser(token)
     if (authError || !userData.user) return json({ error: 'Your session expired. Please sign in again.' }, 401)
     const payload = await req.json()
+
+    if (payload?.action === 'transcribe') {
+      const audioBase64 = typeof payload.audioBase64 === 'string' ? payload.audioBase64 : ''
+      const mimeType = typeof payload.mimeType === 'string' ? payload.mimeType.split(';')[0].toLowerCase() : ''
+      const allowedAudioTypes = ['audio/webm', 'audio/mp4', 'audio/m4a', 'audio/aac', 'audio/ogg', 'audio/mpeg', 'audio/wav', 'audio/flac', 'audio/aiff']
+      if (!allowedAudioTypes.includes(mimeType)) return json({ error: 'This audio format is not supported. Please try another browser.' }, 400)
+      if (!audioBase64 || audioBase64.length > 5_600_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(audioBase64)) {
+        return json({ error: 'Recording is empty or too large. Please record a shorter message.' }, 400)
+      }
+      const transcriptionResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ inlineData: { mimeType, data: audioBase64 } }] }],
+          generationConfig: { audioTranscriptionConfig: { languageCodes: [] }, temperature: 0 },
+        }),
+      })
+      if (transcriptionResponse.status === 429) return json({ error: 'Voice transcription is temporarily busy. Please try again shortly.' }, 429)
+      if (!transcriptionResponse.ok) {
+        const detail = await transcriptionResponse.text()
+        console.error('Gemini transcription error:', transcriptionResponse.status, detail.slice(0, 500))
+        return json({ error: 'Could not transcribe your recording. Please try again.' }, 502)
+      }
+      const transcriptionResult = await transcriptionResponse.json()
+      const transcript = transcriptionResult?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || '').join('').trim()
+      if (!transcript) return json({ error: 'No speech was detected. Please try again.' }, 422)
+      return json({ transcript: transcript.slice(0, 1200) })
+    }
+
     const question = typeof payload?.question === 'string' ? payload.question.trim() : ''
-    if (!question || question.length > 500) return json({ error: 'Enter a message up to 500 characters.' }, 400)
+    if (!question || question.length > 1200) return json({ error: 'Enter a message up to 1,200 characters.' }, 400)
     const { data: quotaAllowed, error: quotaError } = await supabase.rpc('consume_finance_ai_quota')
     if (quotaError) { console.error('Finance AI quota check failed:', quotaError.message); return json({ error: 'Spenza Coach is temporarily unavailable. Please try again later.' }, 503) }
     if (!quotaAllowed) return json({ error: 'Free daily limit reached. Please try again tomorrow.' }, 429)
