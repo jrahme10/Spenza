@@ -52,8 +52,21 @@ function readImage(file: File): Promise<string> {
 
 function normalizeDraft(value: unknown, categories: string[], preferredCurrency?: Currency): ReceiptDraft {
   const raw = value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
-  const amount = Number(raw.amount)
-  const currency = raw.currency === 'USD' || raw.currency === 'LBP' ? raw.currency : null
+  const amountUSD = Number(raw.amountUSD)
+  const amountLBP = Number(raw.amountLBP)
+  const preferredAmount =
+    preferredCurrency === 'USD' && Number.isFinite(amountUSD) && amountUSD > 0
+      ? amountUSD
+      : preferredCurrency === 'LBP' && Number.isFinite(amountLBP) && amountLBP > 0
+        ? amountLBP
+        : null
+  const amount = preferredAmount ?? Number(raw.amount)
+  const currency =
+    preferredAmount != null
+      ? preferredCurrency || null
+      : raw.currency === 'USD' || raw.currency === 'LBP'
+        ? raw.currency
+        : null
   const date = typeof raw.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.date) ? raw.date : null
   const merchant = typeof raw.merchant === 'string' ? raw.merchant.trim().slice(0, 100) : ''
   const description = typeof raw.description === 'string' ? raw.description.trim().slice(0, 240) : ''
@@ -111,6 +124,7 @@ export default function ReceiptScanner({ categories, preferredCurrency, onResult
           imageBase64,
           mimeType: file.type,
           categories: categories.slice(0, 80),
+          preferredCurrency,
         },
       })
       if (error) {
