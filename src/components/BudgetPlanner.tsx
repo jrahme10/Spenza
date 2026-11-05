@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pencil, Target, X } from 'lucide-react'
+import { Pencil, Target, X, Sparkles } from 'lucide-react'
 import type { Currency, Transaction, Wallet } from '../lib/db'
 import { getSupabaseClient } from '../lib/supabaseClient'
 
@@ -84,6 +84,22 @@ export default function BudgetPlanner({ wallets, transactions, categories, date,
     [transactions, month],
   )
   const spent = expenses.reduce((sum, t) => sum + convertToUsd(t.amount, t.walletId), 0)
+  const priorMonths = useMemo(() => [1, 2, 3].map((offset) => {
+    const value = new Date(`${month}-01T12:00:00`)
+    value.setMonth(value.getMonth() - offset)
+    return value.toISOString().slice(0, 7)
+  }), [month])
+  const history = transactions.filter((t) => t.type === 'expense' && priorMonths.includes(t.date.slice(0, 7)))
+  const averageMonthlySpend = history.reduce((sum, t) => sum + convertToUsd(t.amount, t.walletId), 0) / 3
+  const suggestedMonthly = averageMonthlySpend > 0 ? Math.ceil((averageMonthlySpend * 1.1) / 5) * 5 : 0
+  const suggestedCategories = Object.fromEntries(categories.map((name) => {
+    const total = history.filter((t) => t.category === name).reduce((sum, t) => sum + convertToUsd(t.amount, t.walletId), 0)
+    return [name, total > 0 ? Math.ceil(((total / 3) * 1.1) / 5) * 5 : 0]
+  }).filter(([, value]) => Number(value) > 0))
+  const monthDays = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate()
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  const elapsedDays = month === currentMonth ? new Date().getDate() : month < currentMonth ? monthDays : 1
+  const projectedSpend = elapsedDays > 0 ? (spent / elapsedDays) * monthDays : spent
   const remaining = Math.max(0, budget.monthly - spent)
   const pct = budget.monthly ? Math.min(100, (spent / budget.monthly) * 100) : 0
   const categorySpent = (name: string) =>
@@ -96,6 +112,10 @@ export default function BudgetPlanner({ wallets, transactions, categories, date,
       ),
     )
     setEditing(true)
+  }
+  const applySmartSuggestions = () => {
+    setMonthly(suggestedMonthly ? String(suggestedMonthly) : '')
+    setCategoryValues(Object.fromEntries(categories.map((name) => [name, suggestedCategories[name] ? String(suggestedCategories[name]) : ''])))
   }
   const save = async () => {
     if (!wallets.length) return
@@ -169,7 +189,10 @@ export default function BudgetPlanner({ wallets, transactions, categories, date,
               </span>
               <strong>{Math.round(pct)}%</strong>
             </div>
-            <div className="budgetProgress">
+            <div className={pct >= 100 ? 'budgetAlert danger' : pct >= 80 || projectedSpend > budget.monthly ? 'budgetAlert warning' : 'budgetAlert healthy'}>
+              {pct >= 100 ? `You are ${money(spent - budget.monthly, currency)} over this month's limit.` : pct >= 80 ? `You have used ${Math.round(pct)}% of your monthly budget.` : projectedSpend > budget.monthly ? `At this pace, you may spend about ${money(projectedSpend, currency)} this month.` : 'Your spending is within your monthly budget.'}
+            </div>
+            <div className={pct >= 100 ? 'budgetProgress is-danger' : pct >= 80 ? 'budgetProgress is-warning' : 'budgetProgress'}>
               <i style={{ width: `${pct}%` }} />
             </div>
             {Object.entries(budget.categories)
@@ -198,6 +221,7 @@ export default function BudgetPlanner({ wallets, transactions, categories, date,
             Set a monthly budget
           </button>
         )}
+        {averageMonthlySpend > 0 && <div className="budgetSmartInsight"><Sparkles size={15}/><span>Smart estimate from your last 3 months: average spending is {money(averageMonthlySpend, currency)} per month. A 10% buffer suggests {money(suggestedMonthly, currency)}.</span></div>}
       </section>
       {editing && (
         <div className="budgetBackdrop" onClick={() => setEditing(false)}>
@@ -225,9 +249,8 @@ export default function BudgetPlanner({ wallets, transactions, categories, date,
                 placeholder="0"
               />
             </label>
-            <h3>
-              Category limits <small>Optional</small>
-            </h3>
+            <h3>Category limits <small>Optional</small></h3>
+            {suggestedMonthly > 0 && <button type="button" className="budgetSuggestionButton" onClick={applySmartSuggestions}><Sparkles size={14}/> Apply smart suggestions</button>}
             <div className="budgetCategoryInputs">
               {categories.map((c) => (
                 <label key={c}>
