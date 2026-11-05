@@ -24,7 +24,7 @@ type ReceiptDraft = {
 type Props = {
   categories: string[]
   preferredCurrency?: Currency
-  onResult: (result: ReceiptDraft) => void
+  onResult: (result: Omit<ReceiptDraft, 'amount' | 'currency' | 'date'> & { amount: number; currency: Currency; date: string }) => void
 }
 
 function localToday() {
@@ -143,7 +143,7 @@ export default function ReceiptScanner({ categories, preferredCurrency, onResult
 
   const useDetails = () => {
     if (!draft || draft.amount == null || draft.amount <= 0 || !draft.currency) return
-    onResult({ ...draft, date: draft.date || localToday() })
+    onResult({ amount: draft.amount, currency: draft.currency, date: draft.date || localToday(), merchant: draft.merchant, category: draft.category, description: draft.description })
     setDraft(null)
     setStatus('idle')
     setMessage('')
