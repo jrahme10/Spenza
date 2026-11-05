@@ -13,6 +13,7 @@ import {
   ChevronRight,
   CreditCard,
   Home,
+  Mic,
   Pencil,
   Plus,
   Settings,
@@ -124,6 +125,7 @@ export default function App() {
   )
   const [rateInput, setRateInput] = useState(String(defaultData.usdToLbpRate || 89500))
   const [open, setOpen] = useState(false)
+  const [voiceOpen, setVoiceOpen] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
   const [dialog, setDialog] = useState<Dialog | null>(null)
   const [dialogBusy, setDialogBusy] = useState(false)
@@ -308,6 +310,17 @@ export default function App() {
   }
   const showAdd = () => {
     resetForm()
+    setOpen(true)
+  }
+  const showVoiceTransaction = () => {
+    resetForm()
+    const preferredWallet = data.wallets.find((w) => w.id === defaultWalletId) || homeWallet || data.wallets[0]
+    setWalletId(preferredWallet?.id || '')
+    setVoiceOpen(true)
+  }
+  const applyVoiceTransaction = (result: { type: TransactionType; amount: number; currency: Currency; title: string; category: string; date: string; note: string }) => {
+    handleVoiceTransaction(result)
+    setVoiceOpen(false)
     setOpen(true)
   }
   const edit = (t: Transaction) => {
@@ -1035,7 +1048,14 @@ export default function App() {
                 <span className="eyebrow">SPENZA</span>
                 <h1>Good Morning! 👋</h1>
               </div>
-              <NotificationBell data={data} onClick={() => setNotificationsOpen(true)} />
+              <div className="homeHeaderActions">
+                {data.wallets.length > 0 && (
+                  <button className="homeAccountsIcon" aria-label="Add transaction by voice" title="Voice transaction" onClick={showVoiceTransaction}>
+                    <Mic size={19} />
+                  </button>
+                )}
+                <NotificationBell data={data} onClick={() => setNotificationsOpen(true)} />
+              </div>
             </header>
             {data.wallets.length ? (
               <div className="insightSelectors homeAccountSelector compactHomeAccount">
@@ -1506,6 +1526,26 @@ export default function App() {
           ))}
         </nav>
         <FloatingSpenzaChat wallet={homeWallet || insightWallet} transactions={data.transactions} date={today()} />
+        {voiceOpen && (
+          <div className="overlay" onClick={() => setVoiceOpen(false)}>
+            <div className="sheet refSheet" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
+              <div className="sheetTop">
+                <div>
+                  <span className="eyebrow">QUICK ADD</span>
+                  <h2>Voice Transaction</h2>
+                </div>
+                <button className="close" onClick={() => setVoiceOpen(false)}>
+                  <X />
+                </button>
+              </div>
+              <VoiceTransaction
+                categories={data.categories}
+                preferredCurrency={data.wallets.find((w) => w.id === walletId)?.currency || 'USD'}
+                onResult={applyVoiceTransaction}
+              />
+            </div>
+          </div>
+        )}
         {open && (
           <div className="overlay" onClick={() => setOpen(false)}>
             <div className="sheet refSheet" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
