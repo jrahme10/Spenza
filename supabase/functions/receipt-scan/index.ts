@@ -23,7 +23,7 @@ const responseSchema = {
     category: { type: 'STRING' },
     description: { type: 'STRING' },
   },
-  required: ['amount', 'currency', 'date', 'merchant', 'category', 'description'],
+  required: ['amount', 'amountUSD', 'amountLBP', 'currency', 'date', 'merchant', 'category', 'description'],
 }
 
 Deno.serve(async (req) => {
