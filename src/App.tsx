@@ -23,6 +23,7 @@ import {
   CalendarRange,
 } from 'lucide-react'
 import ReceiptScanner from './components/ReceiptScanner'
+import VoiceTransaction from './components/VoiceTransaction'
 import HomeSmartInsight from './components/HomeSmartInsight'
 import NotePhotoPicker from './components/NotePhotoPicker'
 import BackupManager from './components/BackupManager'
@@ -335,6 +336,17 @@ export default function App() {
   useEffect(() => {
     if (receiptSource) applyReceiptAmount(receiptSource, walletId)
   }, [walletId, data.usdToLbpRate])
+  const handleVoiceTransaction = (result: { type: TransactionType; amount: number; currency: Currency; title: string; category: string; date: string; note: string }) => {
+    setType(result.type)
+    const source = { amount: result.amount, currency: result.currency }
+    setReceiptSource(source)
+    applyReceiptAmount(source, walletId)
+    setTitle(result.title)
+    const matchedCategory = data.categories.find((item) => item.toLowerCase() === result.category.toLowerCase()) || data.categories.find((item) => item.toLowerCase() === 'other') || data.categories[0] || 'Other'
+    setCategory(matchedCategory)
+    setDate(result.date || today())
+    setNote(result.note)
+  }
   const handleReceipt = (result: {
     amount: number
     currency: Currency
@@ -1520,6 +1532,7 @@ export default function App() {
                   </button>
                 ))}
               </div>
+              <VoiceTransaction categories={data.categories} preferredCurrency={data.wallets.find((w) => w.id === walletId)?.currency || 'USD'} onResult={handleVoiceTransaction} />
               {type === 'expense' && (
                 <ReceiptScanner
                   categories={data.categories}
