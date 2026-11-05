@@ -41,6 +41,7 @@ export default function FloatingSpenzaChat({ wallet, transactions, date, categor
   const discardRecording = useRef(false)
 
   useEffect(() => () => {
+    discardRecording.current = true
     if (recordingTimer.current !== null) window.clearTimeout(recordingTimer.current)
     recorder.current?.stop()
     mediaStream.current?.getTracks().forEach(track => track.stop())
@@ -62,7 +63,7 @@ export default function FloatingSpenzaChat({ wallet, transactions, date, categor
       const supabase = getSupabaseClient()
       if (!supabase) throw new Error('Sign in and connect Spenza Cloud to use voice input.')
       const { data, error: invokeError } = await supabase.functions.invoke('finance-ai', {
-        body: { action: 'transcribe', audioBase64, mimeType: blob.type || 'audio/webm' },
+        body: { action: 'transcribe', audioBase64, mimeType: blob.type.startsWith('audio/mp4') ? 'audio/m4a' : blob.type.split(';')[0] || 'audio/webm' },
       })
       if (invokeError) throw invokeError
       const transcript = typeof data?.transcript === 'string' ? data.transcript.trim() : ''
