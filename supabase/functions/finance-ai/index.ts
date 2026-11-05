@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   try {
-    const token = req.headers.get('Authorization')?.replace(/^Bearer\\s+/i, '')
+    const token = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '')
     if (!token) return json({ error: 'Please sign in to use Spenza Coach.' }, 401)
     const url = Deno.env.get('SUPABASE_URL')
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     const context = payload?.context && typeof payload.context === 'object' ? payload.context : {}
     const categories = Array.isArray(payload?.categories) ? payload.categories.filter((v: unknown) => typeof v === 'string').slice(0, 80) : ['Other']
     const defaultCurrency = payload?.defaultCurrency === 'LBP' ? 'LBP' : 'USD'
-    const today = typeof payload?.today === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(payload.today) ? payload.today : new Date().toISOString().slice(0, 10)
+    const today = typeof payload?.today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(payload.today) ? payload.today : new Date().toISOString().slice(0, 10)
     const safeContext = {
       currency: context.currency === 'LBP' ? 'LBP' : 'USD',
       month: typeof context.month === 'string' ? context.month.slice(0, 7) : '',
@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     if (parsed.action === 'create_transaction') {
       const draft = parsed.transaction
       const amount = Number(draft?.amount)
-      const date = typeof draft?.date === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(draft.date) ? draft.date : today
+      const date = typeof draft?.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(draft.date) ? draft.date : today
       const validCategory = categories.find((item: string) => item.toLowerCase() === String(draft?.category || '').trim().toLowerCase())
       if (!draft || !Number.isFinite(amount) || amount <= 0 || !['expense', 'income'].includes(String(draft.type))) {
         return json({ answer: 'I need a clear amount and whether this is an expense or income before I can prepare it. What amount should I use?', action: 'none' })
