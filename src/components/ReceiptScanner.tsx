@@ -79,7 +79,7 @@ function normalizeDraft(value: unknown, categories: string[], preferredCurrency?
 
   return {
     amount: Number.isFinite(amount) && amount > 0 ? amount : null,
-    currency: currency || preferredCurrency || null,
+    currency,
     date,
     merchant,
     category: matchedCategory,
