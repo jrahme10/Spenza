@@ -38,7 +38,7 @@ import AppLockGate from './components/AppLockGate'
 import NotificationCenter, { NotificationBell } from './components/NotificationCenter'
 import TransactionCalendar from './components/TransactionCalendar'
 import BudgetPlanner from './components/BudgetPlanner'
-import FloatingSpenzaChat from './components/FloatingSpenzaChat'
+import FloatingSpenzaChat, { type ChatTransactionDraft } from './components/FloatingSpenzaChat'
 import TransactionCategoryPicker from './components/TransactionCategoryPicker'
 import {
   Currency,
@@ -317,6 +317,29 @@ export default function App() {
     const preferredWallet = data.wallets.find((w) => w.id === defaultWalletId) || homeWallet || data.wallets[0]
     setWalletId(preferredWallet?.id || '')
     setVoiceOpen(true)
+  }
+  const applyChatTransaction = (draft: ChatTransactionDraft) => {
+    const preferredWallet = data.wallets.find((w) => w.id === defaultWalletId && w.currency === draft.currency) ||
+      data.wallets.find((w) => w.currency === draft.currency) ||
+      data.wallets.find((w) => w.id === defaultWalletId) ||
+      data.wallets[0]
+    if (!preferredWallet) {
+      setDialog({ title: 'Create a wallet first', message: 'Add at least one wallet before saving a transaction.', kind: 'info' })
+      return false
+    }
+    setEditing(null)
+    setType(draft.type)
+    setWalletId(preferredWallet.id)
+    setToWalletId(data.wallets.find((w) => w.id !== preferredWallet.id)?.id || preferredWallet.id)
+    setReceiptSource({ amount: draft.amount, currency: draft.currency })
+    applyReceiptAmount({ amount: draft.amount, currency: draft.currency }, preferredWallet.id)
+    setTitle(draft.title)
+    setCategory(data.categories.find((item) => item.toLowerCase() === draft.category.toLowerCase()) || data.categories.find((item) => item.toLowerCase() === 'other') || data.categories[0] || 'Other')
+    setDate(draft.date || today())
+    setNote(draft.note || '')
+    setNoteImages([])
+    setOpen(true)
+    return true
   }
   const applyVoiceTransaction = (result: { type: TransactionType; amount: number; currency: Currency; title: string; category: string; date: string; note: string }) => {
     handleVoiceTransaction(result)
@@ -1525,7 +1548,7 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <FloatingSpenzaChat wallet={homeWallet || insightWallet} transactions={data.transactions} date={today()} />
+        <FloatingSpenzaChat wallet={homeWallet || insightWallet} transactions={data.transactions} date={today()} categories={data.categories} onReviewTransaction={applyChatTransaction} />
         {voiceOpen && (
           <div className="overlay" onClick={() => setVoiceOpen(false)}>
             <div className="sheet refSheet" tabIndex={-1} onClick={(e) => e.stopPropagation()}>

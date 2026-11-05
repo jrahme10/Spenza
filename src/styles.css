@@ -702,3 +702,21 @@ nav button {
     border-radius: 0 0 34px 34px;
   }
 }
+
+
+/* AI chat transaction review */
+.spenzaChatMessageGroup { display: flex; flex-direction: column; gap: 8px; }
+.spenzaChatDraft {
+  align-self: flex-start; width: min(88%, 320px); padding: 13px; border: 1px solid var(--line, #e7e5e4);
+  border-radius: 15px; background: var(--surface, #fff); color: var(--text, #292524); box-shadow: 0 8px 24px #0000000a;
+}
+.spenzaChatDraftHead { display: flex; align-items: center; gap: 7px; color: var(--muted, #78716c); font-size: 12px; }
+.spenzaChatDraftHead b { color: var(--text, #292524); }
+.spenzaChatDraftHead span { margin-left: auto; text-transform: capitalize; font-size: 10px; font-weight: 700; }
+.spenzaChatDraft > strong { display: block; margin-top: 12px; font-size: 23px; letter-spacing: -.04em; }
+.spenzaChatDraft p { margin: 3px 0; font-size: 13px; font-weight: 650; }
+.spenzaChatDraft small { display: block; color: var(--muted, #78716c); font-size: 11px; }
+.spenzaChatDraft > button {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px;
+  padding: 10px 12px; border: 0; border-radius: 10px; background: var(--accent, #9c5146); color: #fff; font-size: 12px; font-weight: 750;
+}
