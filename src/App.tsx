@@ -337,32 +337,29 @@ export default function App() {
   }, [walletId, data.usdToLbpRate])
   const handleReceipt = (result: {
     amount: number
-    currency?: Currency
-    merchant?: string
-    rawText: string
+    currency: Currency
+    merchant: string
+    date: string
+    category: string
+    description: string
   }) => {
     setType('expense')
     const source = { amount: result.amount, currency: result.currency }
     setReceiptSource(source)
     applyReceiptAmount(source, walletId)
-    setTitle('')
-    const merchant = (result.merchant || '').trim()
-    if (merchant) {
-      const normalized = merchant.toLowerCase()
-      const learned = data.transactions
-        .filter((t) => t.type === 'expense' && t.category)
-        .find((t) => {
-          const hay = (t.title + ' ' + (t.note || '')).toLowerCase()
-          return hay.includes(normalized) || normalized.includes(t.title.toLowerCase())
-        })
-      if (learned) setCategory(learned.category)
-    }
+    setTitle(result.merchant.trim())
+    const matchedCategory =
+      data.categories.find((item) => item.toLowerCase() === result.category.toLowerCase()) ||
+      data.categories.find((item) => item.toLowerCase() === 'other') ||
+      data.categories[0] ||
+      'Other'
+    setCategory(matchedCategory)
+    if (result.date) setDate(result.date)
     setNote(
-      merchant
-        ? `Receipt · ${merchant}${result.currency ? ` · ${result.currency}` : ''}`
-        : result.currency
-          ? `Receipt scanned in ${result.currency}`
-          : 'Added from scanned receipt',
+      result.description.trim() ||
+        (result.merchant.trim()
+          ? `Receipt · ${result.merchant.trim()} · ${result.currency}`
+          : `Receipt scanned in ${result.currency}`),
     )
   }
   const transferRate = () => {
@@ -1523,7 +1520,13 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              {type === 'expense' && <ReceiptScanner onResult={handleReceipt} />}
+              {type === 'expense' && (
+                <ReceiptScanner
+                  categories={data.categories}
+                  preferredCurrency={data.wallets.find((w) => w.id === walletId)?.currency}
+                  onResult={handleReceipt}
+                />
+              )}
               <label>
                 Date
                 <input
