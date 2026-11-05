@@ -1,237 +1,285 @@
 import { useRef, useState } from 'react'
-import { Camera, CheckCircle2, LoaderCircle, ReceiptText } from 'lucide-react'
-import { createWorker } from 'tesseract.js'
+import {
+  Camera,
+  CheckCircle2,
+  ImagePlus,
+  LoaderCircle,
+  ReceiptText,
+  RotateCcw,
+  Sparkles,
+} from 'lucide-react'
 import type { Currency } from '../lib/db'
+import { getSupabaseClient } from '../lib/supabaseClient'
 import './ReceiptScanner.css'
 
+type ReceiptDraft = {
+  amount: number | null
+  currency: Currency | null
+  date: string | null
+  merchant: string
+  category: string
+  description: string
+}
+
 type Props = {
+  categories: string[]
   preferredCurrency?: Currency
-  onResult: (result: {
-    amount: number
-    currency?: Currency
-    merchant?: string
-    rawText: string
-  }) => void
+  onResult: (result: ReceiptDraft) => void
 }
 
-function parseNumber(raw: string): number | null {
-  let value = raw.replace(/[^0-9.,]/g, '')
-  if (!value) return null
-  const lastDot = value.lastIndexOf('.')
-  const lastComma = value.lastIndexOf(',')
-  if (lastDot >= 0 && lastComma >= 0) {
-    const decimal = lastDot > lastComma ? '.' : ','
-    const thousands = decimal === '.' ? ',' : '.'
-    value = value.split(thousands).join('')
-    if (decimal === ',') value = value.replace(',', '.')
-  } else if (lastComma >= 0) {
-    const tail = value.length - lastComma - 1
-    value = tail === 2 ? value.replace(',', '.') : value.replace(/,/g, '')
-  } else if (lastDot >= 0) {
-    const tail = value.length - lastDot - 1
-    if (tail !== 2) value = value.replace(/\./g, '')
-  }
-  const number = Number(value)
-  return Number.isFinite(number) && number > 0 ? number : null
+function localToday() {
+  const now = new Date()
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-')
 }
 
-const amountToken = '[0-9]{1,3}(?:[.,\\s][0-9]{3})*(?:[.,][0-9]{2})|[0-9]+(?:[.,][0-9]{2})?'
-
-function currencyAmounts(line: string, currency: Currency): number[] {
-  const patterns =
-    currency === 'USD'
-      ? [
-          new RegExp(`(?:US\\$|USD|\\$)\\s*(${amountToken})`, 'gi'),
-          new RegExp(`(${amountToken})\\s*(?:USD|US\\$)`, 'gi'),
-        ]
-      : [
-          new RegExp(`(?:LBP|L\\.?L\\.?|LL|ل\\.?ل\\.?)\\s*(${amountToken})`, 'gi'),
-          new RegExp(`(${amountToken})\\s*(?:LBP|L\\.?L\\.?|LL|ل\\.?ل\\.?)`, 'gi'),
-        ]
-  const values: number[] = []
-  for (const pattern of patterns) {
-    for (const match of line.matchAll(pattern)) {
-      const n = parseNumber(match[1])
-      if (n !== null) values.push(n)
+function readImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const value = typeof reader.result === 'string' ? reader.result : ''
+      const base64 = value.split(',')[1]
+      if (!base64) reject(new Error('Could not read this image.'))
+      else resolve(base64)
     }
+    reader.onerror = () => reject(new Error('Could not read this image.'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function normalizeDraft(value: unknown, categories: string[], preferredCurrency?: Currency): ReceiptDraft {
+  const raw = value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+  const amount = Number(raw.amount)
+  const currency = raw.currency === 'USD' || raw.currency === 'LBP' ? raw.currency : null
+  const date = typeof raw.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.date) ? raw.date : null
+  const merchant = typeof raw.merchant === 'string' ? raw.merchant.trim().slice(0, 100) : ''
+  const description = typeof raw.description === 'string' ? raw.description.trim().slice(0, 240) : ''
+  const requestedCategory = typeof raw.category === 'string' ? raw.category.trim() : ''
+  const matchedCategory =
+    categories.find((item) => item.toLowerCase() === requestedCategory.toLowerCase()) ||
+    categories.find((item) => item.toLowerCase() === 'other') ||
+    categories[0] ||
+    'Other'
+
+  return {
+    amount: Number.isFinite(amount) && amount > 0 ? amount : null,
+    currency: currency || preferredCurrency || null,
+    date,
+    merchant,
+    category: matchedCategory,
+    description,
   }
-  return values
 }
 
-function findCurrencyTotals(text: string): Partial<Record<Currency, number>> {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-  const priority = lines.filter(
-    (line) =>
-      /\b(grand\s*total|total\s*due|amount\s*due|balance\s*due|net\s*total|total)\b/i.test(line) &&
-      !/subtotal|tax|vat|change|tender/i.test(line),
-  )
-  const source = priority.length ? priority : lines
-  const totals: Partial<Record<Currency, number>> = {}
-  for (const currency of ['USD', 'LBP'] as Currency[]) {
-    const candidates = source.flatMap((line) => currencyAmounts(line, currency))
-    if (candidates.length) totals[currency] = Math.max(...candidates)
-  }
-  return totals
-}
-
-function findUnlabelledTotal(text: string): number | null {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-  const priority = lines.filter(
-    (line) =>
-      /\b(grand\s*total|total\s*due|amount\s*due|balance\s*due|net\s*total|total)\b/i.test(line) &&
-      !/subtotal|tax|vat|change|tender/i.test(line),
-  )
-  const values: number[] = []
-  for (const line of priority) {
-    for (const match of line.matchAll(new RegExp(`(${amountToken})`, 'g'))) {
-      const n = parseNumber(match[1])
-      if (n !== null) values.push(n)
-    }
-  }
-  return values.length ? Math.max(...values) : null
-}
-
-function findMerchant(text: string): string | undefined {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-  return lines.find(
-    (line) =>
-      /[A-Za-z]{3}/.test(line) &&
-      line.length >= 3 &&
-      line.length <= 48 &&
-      !/receipt|invoice|tax|vat|date|time|tel|phone|total/i.test(line),
-  )
-}
-
-function selectedWalletCurrency(): Currency | undefined {
-  const sheet = document.querySelector('.sheet')
-  const selects = sheet?.querySelectorAll('select')
-  if (!selects?.length) return undefined
-  const text =
-    (selects[0] as HTMLSelectElement).selectedOptions?.[0]?.textContent?.toUpperCase() || ''
-  if (text.includes('(USD)') || text.includes('USD')) return 'USD'
-  if (text.includes('(LBP)') || text.includes('LBP')) return 'LBP'
-  return undefined
-}
-
-export default function ReceiptScanner({ preferredCurrency, onResult }: Props) {
-  const inputRef = useRef<HTMLInputElement>(null)
+export default function ReceiptScanner({ categories, preferredCurrency, onResult }: Props) {
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const galleryRef = useRef<HTMLInputElement>(null)
   const [status, setStatus] = useState<'idle' | 'scanning' | 'done' | 'error'>('idle')
-  const [progress, setProgress] = useState(0)
   const [message, setMessage] = useState('')
+  const [draft, setDraft] = useState<ReceiptDraft | null>(null)
 
   const scan = async (file?: File) => {
     if (!file) return
+    setDraft(null)
+    if (!file.type.startsWith('image/')) {
+      setStatus('error')
+      setMessage('Please choose an image file.')
+      return
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setStatus('error')
+      setMessage('This image is larger than 8 MB. Choose a smaller photo.')
+      return
+    }
+
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      setStatus('error')
+      setMessage('Connect Spenza Cloud and sign in before scanning receipts.')
+      return
+    }
+
     setStatus('scanning')
-    setProgress(0)
-    setMessage('Reading receipt…')
-    let worker: Awaited<ReturnType<typeof createWorker>> | null = null
+    setMessage('Gemini is reading your receipt…')
     try {
-      worker = await createWorker('eng', 1, {
-        logger: (event) => {
-          if (event.status === 'recognizing text')
-            setProgress(Math.round((event.progress || 0) * 100))
+      const imageBase64 = await readImage(file)
+      const { data, error } = await supabase.functions.invoke('receipt-scan', {
+        body: {
+          imageBase64,
+          mimeType: file.type,
+          categories: categories.slice(0, 80),
         },
       })
-      const result = await worker.recognize(file)
-      const rawText = result.data.text || ''
-      const totals = findCurrencyTotals(rawText)
-      const walletCurrency = preferredCurrency || selectedWalletCurrency()
-
-      let currency: Currency | undefined
-      let total: number | null = null
-
-      // Critical rule: if the receipt prints both currencies, always use the value
-      // that matches the selected wallet. Never compare USD and LBP numerically.
-      if (walletCurrency && totals[walletCurrency] != null) {
-        currency = walletCurrency
-        total = totals[walletCurrency]!
-      } else if (totals.USD != null && totals.LBP == null) {
-        currency = 'USD'
-        total = totals.USD
-      } else if (totals.LBP != null && totals.USD == null) {
-        currency = 'LBP'
-        total = totals.LBP
-      } else if (totals.USD != null) {
-        // If no wallet can be resolved and both values exist, prefer USD rather than
-        // accidentally selecting the much larger LBP number.
-        currency = 'USD'
-        total = totals.USD
-      } else if (totals.LBP != null) {
-        currency = 'LBP'
-        total = totals.LBP
-      } else {
-        total = findUnlabelledTotal(rawText)
+      if (error) {
+        const detail = typeof data?.error === 'string' ? data.error : error.message
+        throw new Error(detail || 'Receipt scanning failed.')
       }
-
-      if (!total) {
+      if (data?.error) throw new Error(String(data.error))
+      const parsed = normalizeDraft(data?.receipt, categories, preferredCurrency)
+      if (parsed.amount == null) {
         setStatus('error')
-        setMessage(
-          'I could not confidently find the total. Try a clearer photo or enter the amount manually.',
-        )
+        setMessage('I could not identify the receipt total confidently. Try a clearer photo.')
         return
       }
-
-      const merchant = findMerchant(rawText)
-      onResult({ amount: total, currency, merchant, rawText })
+      setDraft(parsed)
       setStatus('done')
-      setProgress(100)
-      const label = currency ? `${currency} ${total.toLocaleString()}` : total.toLocaleString()
-      setMessage(`Found total: ${label}. Please review it before saving.`)
+      setMessage('Receipt details extracted. Review and edit them before using them.')
     } catch (error) {
       console.error('Receipt scan failed', error)
       setStatus('error')
-      setMessage('Receipt scanning failed. You can retry or enter the expense manually.')
+      setMessage(error instanceof Error ? error.message : 'Receipt scanning failed. Please retry.')
     } finally {
-      await worker?.terminate()
-      if (inputRef.current) inputRef.current.value = ''
+      if (cameraRef.current) cameraRef.current.value = ''
+      if (galleryRef.current) galleryRef.current.value = ''
     }
+  }
+
+  const updateDraft = (patch: Partial<ReceiptDraft>) => {
+    setDraft((current) => (current ? { ...current, ...patch } : current))
+  }
+
+  const useDetails = () => {
+    if (!draft || draft.amount == null || draft.amount <= 0 || !draft.currency) return
+    onResult({ ...draft, date: draft.date || localToday() })
+    setDraft(null)
+    setStatus('idle')
+    setMessage('')
   }
 
   return (
     <div className="receiptScanner">
       <input
-        ref={inputRef}
+        ref={cameraRef}
         className="receiptInput"
         type="file"
         accept="image/*"
         capture="environment"
-        onChange={(e) => scan(e.target.files?.[0])}
+        onChange={(event) => void scan(event.target.files?.[0])}
       />
-      <button
-        className="receiptButton"
-        type="button"
-        disabled={status === 'scanning'}
-        onClick={() => inputRef.current?.click()}
-      >
-        <span className="receiptIcon">
-          {status === 'scanning' ? (
-            <LoaderCircle className="spin" />
-          ) : status === 'done' ? (
-            <CheckCircle2 />
-          ) : (
-            <Camera />
-          )}
-        </span>
-        <span>
-          <b>{status === 'scanning' ? 'Scanning receipt…' : 'Scan receipt'}</b>
-          <small>
-            {status === 'scanning'
-              ? `${progress}% complete`
-              : 'Use the total matching the selected wallet'}
-          </small>
-        </span>
-        <ReceiptText className="receiptSideIcon" />
-      </button>
-      {status !== 'idle' && <div className={`receiptStatus ${status}`}>{message}</div>}
+      <input
+        ref={galleryRef}
+        className="receiptInput"
+        type="file"
+        accept="image/*"
+        onChange={(event) => void scan(event.target.files?.[0])}
+      />
+      <div className="receiptScannerActions">
+        <button
+          className="receiptButton"
+          type="button"
+          disabled={status === 'scanning'}
+          onClick={() => cameraRef.current?.click()}
+        >
+          <span className="receiptIcon">
+            {status === 'scanning' ? <LoaderCircle className="spin" /> : <Camera />}
+          </span>
+          <span>
+            <b>{status === 'scanning' ? 'Scanning receipt…' : 'Take receipt photo'}</b>
+            <small>Use your camera</small>
+          </span>
+          <ReceiptText className="receiptSideIcon" />
+        </button>
+        <button
+          className="receiptGalleryButton"
+          type="button"
+          disabled={status === 'scanning'}
+          onClick={() => galleryRef.current?.click()}
+        >
+          <ImagePlus size={16} />
+          Choose from gallery
+        </button>
+      </div>
+
+      {status !== 'idle' && <div className={'receiptStatus ' + status}>{message}</div>}
+
+      {draft && (
+        <section className="receiptReview" aria-label="Review scanned receipt">
+          <div className="receiptReviewHead">
+            <span className="receiptReviewIcon"><Sparkles size={16} /></span>
+            <div>
+              <b>Review extracted details</b>
+              <small>Nothing is saved until you press Save Transaction.</small>
+            </div>
+          </div>
+          <div className="receiptReviewGrid">
+            <label>
+              Amount
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="any"
+                value={draft.amount ?? ''}
+                onChange={(event) => updateDraft({ amount: event.target.value === '' ? null : Number(event.target.value) })}
+              />
+            </label>
+            <label>
+              Currency
+              <select
+                value={draft.currency || ''}
+                onChange={(event) => updateDraft({ currency: event.target.value as Currency })}
+              >
+                <option value="" disabled>Select</option>
+                <option value="USD">USD</option>
+                <option value="LBP">LBP</option>
+              </select>
+            </label>
+            <label>
+              Date
+              <input
+                type="date"
+                value={draft.date || ''}
+                onChange={(event) => updateDraft({ date: event.target.value || null })}
+              />
+            </label>
+            <label>
+              Merchant
+              <input
+                type="text"
+                value={draft.merchant}
+                maxLength={100}
+                onChange={(event) => updateDraft({ merchant: event.target.value })}
+                placeholder="Merchant name"
+              />
+            </label>
+            <label>
+              Category
+              <select
+                value={draft.category}
+                onChange={(event) => updateDraft({ category: event.target.value })}
+              >
+                {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
+            </label>
+            <label className="receiptDescriptionField">
+              Description
+              <input
+                type="text"
+                value={draft.description}
+                maxLength={240}
+                onChange={(event) => updateDraft({ description: event.target.value })}
+                placeholder="What was purchased?"
+              />
+            </label>
+          </div>
+          <div className="receiptReviewActions">
+            <button type="button" className="receiptRetryButton" onClick={() => setDraft(null)}>
+              <RotateCcw size={15} /> Scan another
+            </button>
+            <button
+              type="button"
+              className="receiptUseButton"
+              disabled={draft.amount == null || draft.amount <= 0 || !draft.currency}
+              onClick={useDetails}
+            >
+              <CheckCircle2 size={16} /> Use details
+            </button>
+          </div>
+        </section>
+      )}
     </div>
   )
 }
