@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Mic, MicOff, Sparkles, X } from 'lucide-react'
 import type { Currency, TransactionType } from '../lib/db'
-import './voice-transaction.css'
+import '../voice-transaction.css'
 type Draft={type:TransactionType;amount:number;currency:Currency;title:string;category:string;date:string;note:string}
 type Props={categories:string[];preferredCurrency:Currency;onResult:(draft:Draft)=>void}
 type RecEvent={results:ArrayLike<ArrayLike<{transcript:string}>>}
