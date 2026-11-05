@@ -22,7 +22,7 @@ type Props = {
 type Message = { role: 'user' | 'assistant'; text: string; draft?: ChatTransactionDraft }
 type SpeechResultEvent = { results: ArrayLike<ArrayLike<{ transcript: string }>>; resultIndex?: number }
 type SpeechRecognitionLike = {
-  lang: string; continuous: boolean; interimResults: boolean
+  lang?: string; continuous: boolean; interimResults: boolean
   onresult: ((event: SpeechResultEvent) => void) | null
   onerror: ((event: { error?: string }) => void) | null
   onend: (() => void) | null
@@ -42,7 +42,6 @@ export default function FloatingSpenzaChat({ wallet, transactions, date, categor
   const [error, setError] = useState('')
   const [voiceError, setVoiceError] = useState('')
   const [listening, setListening] = useState(false)
-  const [speechLanguage, setSpeechLanguage] = useState<'en-US' | 'ar-LB'>('en-US')
   const recognition = useRef<SpeechRecognitionLike | null>(null)
   useEffect(() => () => recognition.current?.stop(), [])
   const toggleRecording = () => {
@@ -53,7 +52,6 @@ export default function FloatingSpenzaChat({ wallet, transactions, date, categor
     try {
       setVoiceError('')
       const recorder = new Recognition()
-      recorder.lang = speechLanguage
       recorder.continuous = true
       recorder.interimResults = false
       recorder.onresult = event => {
@@ -113,7 +111,7 @@ export default function FloatingSpenzaChat({ wallet, transactions, date, categor
     {open&&<div className="spenzaChatBackdrop" onClick={closeChat}><section className="spenzaChatWindow" role="dialog" aria-modal="true" aria-label="Spenza Coach" onClick={e=>e.stopPropagation()}>
       <header className="spenzaChatHeader"><div className="spenzaChatAvatar"><Bot size={20}/></div><div><b>Spenza Coach</b><small>Personal finance assistant · Free</small></div><button onClick={closeChat} aria-label="Close chat"><X size={20}/></button></header>
       <div className="spenzaChatMessages">{messages.length===0&&<div className="spenzaChatWelcome"><div className="spenzaChatWelcomeIcon"><Sparkles size={22}/></div><h2>Hi! I'm Spenza Coach</h2><p>Ask about spending, budgets, income, savings — or add a transaction by chatting.</p><div className="spenzaChatSuggestions">{['I spent $12 on lunch','I received $500 salary','How much did I spend this month?'].map(p=><button key={p} onClick={()=>setQuestion(p)}>{p}</button>)}</div></div>}{messages.map((m,i)=><div className="spenzaChatMessageGroup" key={i}><div className={`spenzaChatMessage ${m.role}`}><span>{m.text}</span></div>{m.draft&&<div className="spenzaChatDraft"><div className="spenzaChatDraftHead"><ReceiptText size={17}/><b>Transaction draft</b><span>{m.draft.type}</span></div><strong>{formatAmount(m.draft.amount,m.draft.currency)}</strong><p>{m.draft.title} · {m.draft.category}</p><small>{m.draft.date}{m.draft.note ? ` · ${m.draft.note}` : ''}</small><button onClick={()=>reviewDraft(m.draft!)}>Review & continue <ArrowRight size={16}/></button></div>}</div>)}{asking&&<div className="spenzaChatTyping">Spenza is thinking…</div>}{error&&<div className="spenzaChatError" role="status">{error}</div>}</div>
-      <form className="spenzaChatComposer" onSubmit={e=>{e.preventDefault();void send()}}><input value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Type or speak your message..." maxLength={500} disabled={asking}/><select className="spenzaChatLanguage" aria-label="Voice input language" value={speechLanguage} onChange={e=>setSpeechLanguage(e.target.value as 'en-US'|'ar-LB')} disabled={listening}><option value="en-US">EN</option><option value="ar-LB">AR</option></select><button type="button" className={listening?'spenzaChatMic listening':'spenzaChatMic'} onClick={toggleRecording} aria-label={listening?'Stop voice recording':'Start voice recording'} aria-pressed={listening}>{listening?<MicOff size={18}/>:<Mic size={18}/>}</button><button type="submit" disabled={!question.trim()||asking} aria-label="Send message"><Send size={18}/></button></form>{voiceError&&<p className="spenzaChatVoiceError" role="status">{voiceError}</p>}{listening&&<p className="spenzaChatRecording" role="status">Listening… speak now, then tap the microphone to stop.</p>}<p className="spenzaChatFootnote">AI prepares a draft — you review and save it. Nothing is saved automatically.</p>
+      <form className="spenzaChatComposer" onSubmit={e=>{e.preventDefault();void send()}}><input value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Type or speak your message..." maxLength={500} disabled={asking}/><button type="button" className={listening?'spenzaChatMic listening':'spenzaChatMic'} onClick={toggleRecording} aria-label={listening?'Stop voice recording':'Start voice recording'} aria-pressed={listening}>{listening?<MicOff size={18}/>:<Mic size={18}/>}</button><button type="submit" disabled={!question.trim()||asking} aria-label="Send message"><Send size={18}/></button></form>{voiceError&&<p className="spenzaChatVoiceError" role="status">{voiceError}</p>}{listening&&<p className="spenzaChatRecording" role="status">Listening… speak now, then tap the microphone to stop.</p>}<p className="spenzaChatFootnote">AI prepares a draft — you review and save it. Nothing is saved automatically.</p>
     </section></div>}
   </>
 }
