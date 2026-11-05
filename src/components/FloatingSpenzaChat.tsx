@@ -20,7 +20,7 @@ type Props = {
   onReviewTransaction: (draft: ChatTransactionDraft) => boolean
 }
 type Message = { role: 'user' | 'assistant'; text: string; draft?: ChatTransactionDraft }
-type SpeechResultEvent = { results: ArrayLike<ArrayLike<{ transcript: string }>> }
+type SpeechResultEvent = { results: ArrayLike<ArrayLike<{ transcript: string }>>; resultIndex?: number }
 type SpeechRecognitionLike = {
   lang: string; continuous: boolean; interimResults: boolean
   onresult: ((event: SpeechResultEvent) => void) | null
@@ -57,7 +57,7 @@ export default function FloatingSpenzaChat({ wallet, transactions, date, categor
       recorder.continuous = true
       recorder.interimResults = false
       recorder.onresult = event => {
-        const transcript = Array.from(event.results).map(result => result[0]?.transcript || '').join(' ').trim()
+        const transcript = Array.from(event.results).slice(event.resultIndex ?? 0).map(result => result[0]?.transcript || '').join(' ').trim()
         if (transcript) setQuestion(current => current.trim() ? current.trim() + ' ' + transcript : transcript)
       }
       recorder.onerror = event => {
