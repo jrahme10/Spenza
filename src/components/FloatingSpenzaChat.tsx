@@ -49,7 +49,7 @@ export default function FloatingSpenzaChat({ wallet, transactions, date }: Props
     } finally {setAsking(false)}
   }
   return <>
-    <button className="spenzaAiLauncher" onClick={()=>setOpen(true)} aria-label="Open Spenza AI chat"><Sparkles size={21}/><span>Ask Spenza</span></button>
+    <button className="spenzaAiLauncher" onClick={()=>setOpen(true)} aria-label="Open Spenza AI chat"><Sparkles size={21}/></button>
     {open&&<div className="spenzaChatBackdrop" onClick={()=>setOpen(false)}><section className="spenzaChatWindow" role="dialog" aria-modal="true" aria-label="Spenza Coach" onClick={e=>e.stopPropagation()}>
       <header className="spenzaChatHeader"><div className="spenzaChatAvatar"><Bot size={20}/></div><div><b>Spenza Coach</b><small>Personal finance assistant · Free</small></div><button onClick={()=>setOpen(false)} aria-label="Close chat"><X size={20}/></button></header>
       <div className="spenzaChatMessages">{messages.length===0&&<div className="spenzaChatWelcome"><div className="spenzaChatWelcomeIcon"><Sparkles size={22}/></div><h2>Hi! I'm Spenza Coach</h2><p>Ask about spending, budgets, income, savings, or monthly trends.</p><div className="spenzaChatSuggestions">{['How much did I spend this month?','Where can I save money?','What are my top spending categories?'].map(p=><button key={p} onClick={()=>setQuestion(p)}>{p}</button>)}</div></div>}{messages.map((m,i)=><div className={`spenzaChatMessage ${m.role}`} key={i}><span>{m.text}</span></div>)}{asking&&<div className="spenzaChatTyping">Spenza is thinking…</div>}{error&&<div className="spenzaChatError" role="status">{error}</div>}</div>
