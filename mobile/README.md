@@ -6,7 +6,7 @@ Native React Native version of Spenza built with Expo and Expo Router.
 
 ```bash
 cd mobile
-npm install
+npm install --legacy-peer-dep
 npx expo start
 ```
 
