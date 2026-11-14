@@ -1518,7 +1518,7 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <FloatingSpenzaChat wallet={homeWallet || insightWallet} transactions={data.transactions} date={today()} categories={data.categories} onReviewTransaction={applyChatTransaction} />
+        <FloatingSpenzaChat wallet={homeWallet || insightWallet} wallets={data.wallets} transactions={data.transactions} date={today()} categories={data.categories} onReviewTransaction={applyChatTransaction} />
         {open && (
           <div className="overlay" onClick={() => setOpen(false)}>
             <div className="sheet refSheet" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
