@@ -14,6 +14,7 @@ export type ChatTransactionDraft = {
 }
 type Props = {
   wallet?: Wallet
+  wallets: Wallet[]
   transactions: Transaction[]
   date: string
   categories: string[]
@@ -25,7 +26,7 @@ const previousMonth = (d: string) => { const x = new Date(`${d.slice(0, 7)}-01T1
 const merchant = (t: Transaction) => (t.title || t.note || t.category || 'Transaction').trim()
 const formatAmount = (amount: number, currency: Currency) => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: currency === 'LBP' ? 0 : 2 }).format(amount)
 
-export default function FloatingSpenzaChat({ wallet, transactions, date, categories, onReviewTransaction }: Props) {
+export default function FloatingSpenzaChat({ wallet, wallets, transactions, date, categories, onReviewTransaction }: Props) {
   const [open, setOpen] = useState(false)
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
@@ -128,22 +129,70 @@ export default function FloatingSpenzaChat({ wallet, transactions, date, categor
     }
   }
   const context = useMemo(() => {
-    if (!wallet) return {}
     const current = monthKey(date), previous = previousMonth(date)
-    const own = transactions.filter(t => t.walletId === wallet.id)
-    const expenses = own.filter(t => t.type === 'expense' && monthKey(t.date) === current)
-    const prev = own.filter(t => t.type === 'expense' && monthKey(t.date) === previous)
-    const income = own.filter(t => t.type === 'income' && monthKey(t.date) === current).reduce((s,t) => s+t.amount,0)
-    const spent = expenses.reduce((s,t) => s+t.amount,0)
+    const walletCurrencies = new Map(wallets.map(item => [item.id, item.currency]))
+    const currencyOf = (transaction: Transaction): Currency => walletCurrencies.get(transaction.walletId) || (wallet?.id === transaction.walletId ? wallet.currency : 'USD')
+    const sumByCurrency = (items: Transaction[]) => {
+      const totals = new Map<Currency, number>()
+      items.forEach(item => {
+        const currency = currencyOf(item)
+        totals.set(currency, (totals.get(currency) || 0) + item.amount)
+      })
+      return [...totals.entries()].map(([currency, amount]) => ({ currency, amount: Math.round(amount * (currency === 'LBP' ? 1 : 100)) / (currency === 'LBP' ? 1 : 100) }))
+    }
+    const currentMonthTransactions = transactions.filter(item => monthKey(item.date) === current)
+    const previousMonthTransactions = transactions.filter(item => monthKey(item.date) === previous)
+    const expenses = currentMonthTransactions.filter(item => item.type === 'expense')
+    const previousExpenses = previousMonthTransactions.filter(item => item.type === 'expense')
+    const incomes = currentMonthTransactions.filter(item => item.type === 'income')
+    const spentByCurrency = sumByCurrency(expenses)
+    const previousMonthSpentByCurrency = sumByCurrency(previousExpenses)
+    const incomeByCurrency = sumByCurrency(incomes)
+    const netByCurrency = [...new Set([...spentByCurrency, ...incomeByCurrency].map(item => item.currency))].map(currency => ({
+      currency,
+      amount: (incomeByCurrency.find(item => item.currency === currency)?.amount || 0) - (spentByCurrency.find(item => item.currency === currency)?.amount || 0),
+    }))
     const categoryTotals = new Map<string, number>()
-    expenses.forEach(t => categoryTotals.set(t.category,(categoryTotals.get(t.category)||0)+t.amount))
-    const days = new Date(Number(current.slice(0,4)),Number(current.slice(5,7)),0).getDate()
-    const elapsed = Math.max(1,Math.min(days,current===monthKey(date)?Number(date.slice(8,10)):days))
-    const groups = new Map<string,Transaction[]>()
-    own.filter(t=>t.type==='expense').forEach(t=>{const k=merchant(t).toLowerCase();groups.set(k,[...(groups.get(k)||[]),t])})
-    const recurring = [...groups.values()].filter(items=>items.length>=2).filter(items=>{const a=items[items.length-2],b=items[items.length-1];const gap=Math.abs((new Date(b.date).getTime()-new Date(a.date).getTime())/86400000);return gap>=25&&gap<=35}).slice(0,4).map(items=>({name:merchant(items[items.length-1]),amount:items[items.length-1].amount}))
-    return {currency:wallet.currency,month:current,spent,previousMonthSpent:prev.reduce((s,t)=>s+t.amount,0),income,net:income-spent,dailyAverage:spent/elapsed,monthEndEstimate:spent/elapsed*days,topCategories:[...categoryTotals.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5).map(([name,amount])=>({name,amount})),possibleRecurring:recurring}
-  },[wallet,transactions,date])
+    expenses.forEach(item => {
+      const key = currencyOf(item) + ':' + item.category
+      categoryTotals.set(key, (categoryTotals.get(key) || 0) + item.amount)
+    })
+    const days = new Date(Number(current.slice(0,4)), Number(current.slice(5,7)), 0).getDate()
+    const elapsed = Math.max(1, Math.min(days, current === monthKey(date) ? Number(date.slice(8,10)) : days))
+    const dailyAverageByCurrency = spentByCurrency.map(item => ({ currency: item.currency, amount: item.amount / elapsed }))
+    const monthEndEstimateByCurrency = spentByCurrency.map(item => ({ currency: item.currency, amount: item.amount / elapsed * days }))
+    const recurringGroups = new Map<string, Transaction[]>()
+    transactions.filter(item => item.type === 'expense').forEach(item => {
+      const key = currencyOf(item) + ':' + merchant(item).toLowerCase()
+      recurringGroups.set(key, [...(recurringGroups.get(key) || []), item])
+    })
+    const possibleRecurring = [...recurringGroups.entries()].filter(([, items]) => items.length >= 2).filter(([, items]) => {
+      const sorted = [...items].sort((a,b) => a.date.localeCompare(b.date))
+      const a = sorted[sorted.length - 2], b = sorted[sorted.length - 1]
+      const gap = Math.abs((new Date(b.date).getTime() - new Date(a.date).getTime()) / 86400000)
+      return gap >= 25 && gap <= 35
+    }).slice(0,4).map(([key, items]) => ({
+      name: merchant(items[items.length - 1]),
+      currency: key.split(':')[0],
+      amount: items[items.length - 1].amount,
+    }))
+    return {
+      scope: 'all wallets',
+      walletCount: wallets.length,
+      month: current,
+      spentByCurrency,
+      previousMonthSpentByCurrency,
+      incomeByCurrency,
+      netByCurrency,
+      dailyAverageByCurrency,
+      monthEndEstimateByCurrency,
+      topCategories: [...categoryTotals.entries()].sort((a,b) => b[1] - a[1]).slice(0,5).map(([key, amount]) => {
+        const separator = key.indexOf(':')
+        return { currency: key.slice(0, separator), name: key.slice(separator + 1), amount }
+      }),
+      possibleRecurring,
+    }
+  }, [wallet, wallets, transactions, date])
   const send = async () => {
     const q=question.trim(); if(!q||asking)return
     const supabase=getSupabaseClient()
@@ -178,7 +227,7 @@ export default function FloatingSpenzaChat({ wallet, transactions, date, categor
     <button className="spenzaAiLauncher" onClick={()=>setOpen(true)} aria-label="Open Spenza AI chat"><Sparkles size={21}/></button>
     {open&&<div className="spenzaChatBackdrop" onClick={closeChat}><section className="spenzaChatWindow" role="dialog" aria-modal="true" aria-label="Spenza Coach" onClick={e=>e.stopPropagation()}>
       <header className="spenzaChatHeader"><div className="spenzaChatAvatar"><Bot size={20}/></div><div><b>Spenza Coach</b><small>Personal finance assistant · Free</small></div><button onClick={closeChat} aria-label="Close chat"><X size={20}/></button></header>
-      <div className="spenzaChatMessages">{messages.length===0&&<div className="spenzaChatWelcome"><div className="spenzaChatWelcomeIcon"><Sparkles size={22}/></div><h2>Hi! I'm Spenza Coach</h2><p>Ask about spending, budgets, income, savings — or add a transaction by chatting.</p><div className="spenzaChatSuggestions">{['I spent $12 on lunch','I received $500 salary','How much did I spend this month?'].map(p=><button key={p} onClick={()=>setQuestion(p)}>{p}</button>)}</div></div>}{messages.map((m,i)=><div className="spenzaChatMessageGroup" key={i}><div className={`spenzaChatMessage ${m.role}`}><span>{m.text}</span></div>{m.draft&&<div className="spenzaChatDraft"><div className="spenzaChatDraftHead"><ReceiptText size={17}/><b>Transaction draft</b><span>{m.draft.type}</span></div><strong>{formatAmount(m.draft.amount,m.draft.currency)}</strong><p>{m.draft.title} · {m.draft.category}</p><small>{m.draft.date}{m.draft.note ? ` · ${m.draft.note}` : ''}</small><button onClick={()=>reviewDraft(m.draft!)}>Review & continue <ArrowRight size={16}/></button></div>}</div>)}{asking&&<div className="spenzaChatTyping">Spenza is thinking…</div>}{error&&<div className="spenzaChatError" role="status">{error}</div>}</div>
+      <div className="spenzaChatMessages">{messages.length===0&&<div className="spenzaChatWelcome"><div className="spenzaChatWelcomeIcon"><Sparkles size={22}/></div><h2>Hi! I'm Spenza Coach</h2><p>Ask about spending, budgets, income, savings — or add a transaction by chatting.</p><div className="spenzaChatSuggestions">{['I spent $12 on lunch','I received $500 salary','How much have I spent this month across all accounts?'].map(p=><button key={p} onClick={()=>setQuestion(p)}>{p}</button>)}</div></div>}{messages.map((m,i)=><div className="spenzaChatMessageGroup" key={i}><div className={`spenzaChatMessage ${m.role}`}><span>{m.text}</span></div>{m.draft&&<div className="spenzaChatDraft"><div className="spenzaChatDraftHead"><ReceiptText size={17}/><b>Transaction draft</b><span>{m.draft.type}</span></div><strong>{formatAmount(m.draft.amount,m.draft.currency)}</strong><p>{m.draft.title} · {m.draft.category}</p><small>{m.draft.date}{m.draft.note ? ` · ${m.draft.note}` : ''}</small><button onClick={()=>reviewDraft(m.draft!)}>Review & continue <ArrowRight size={16}/></button></div>}</div>)}{asking&&<div className="spenzaChatTyping">Spenza is thinking…</div>}{error&&<div className="spenzaChatError" role="status">{error}</div>}</div>
       <form className="spenzaChatComposer" onSubmit={e=>{e.preventDefault();void send()}}><input value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Type or speak your message..." maxLength={1200} disabled={asking||transcribing}/><button type="button" className={listening?'spenzaChatMic listening':'spenzaChatMic'} onClick={toggleRecording} disabled={asking||transcribing} aria-label={listening?'Stop voice recording':'Start voice recording'} aria-pressed={listening}>{listening?<MicOff size={18}/>:<Mic size={18}/>}</button><button type="submit" disabled={!question.trim()||asking||transcribing} aria-label="Send message"><Send size={18}/></button></form>{voiceError&&<p className="spenzaChatVoiceError" role="status">{voiceError}</p>}{listening&&<p className="spenzaChatRecording" role="status">Recording… tap the microphone to finish (45-second limit).</p>}{transcribing&&<p className="spenzaChatRecording" role="status">Detecting language and transcribing…</p>}<p className="spenzaChatFootnote">AI prepares a draft — you review and save it. Nothing is saved automatically.</p>
     </section></div>}
   </>
