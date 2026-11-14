@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     const categories = Array.isArray(payload?.categories) ? payload.categories.filter((v: unknown) => typeof v === 'string').slice(0, 80) : ['Other']
     const defaultCurrency = payload?.defaultCurrency === 'LBP' ? 'LBP' : 'USD'
     const today = typeof payload?.today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(payload.today) ? payload.today : new Date().toISOString().slice(0, 10)
-    const safeMoneyRows = (value: unknown) => Array.isArray(value) ? value.slice(0, 8).map((item: Record<string, unknown>) => ({
+    const safeMoneyRows = (value: unknown) => Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object').slice(0, 8).map((item) => ({
       currency: item.currency === 'LBP' ? 'LBP' : 'USD',
       amount: Number(item.amount) || 0,
     })) : []
@@ -106,12 +106,12 @@ Deno.serve(async (req) => {
       netByCurrency: safeMoneyRows(context.netByCurrency),
       dailyAverageByCurrency: safeMoneyRows(context.dailyAverageByCurrency),
       monthEndEstimateByCurrency: safeMoneyRows(context.monthEndEstimateByCurrency),
-      topCategories: Array.isArray(context.topCategories) ? context.topCategories.slice(0, 5).map((item: Record<string, unknown>) => ({
+      topCategories: Array.isArray(context.topCategories) ? context.topCategories.filter((item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object').slice(0, 5).map((item) => ({
         currency: item.currency === 'LBP' ? 'LBP' : 'USD',
         name: String(item.name || '').slice(0, 80),
         amount: Number(item.amount) || 0,
       })) : [],
-      possibleRecurring: Array.isArray(context.possibleRecurring) ? context.possibleRecurring.slice(0, 4).map((item: Record<string, unknown>) => ({
+      possibleRecurring: Array.isArray(context.possibleRecurring) ? context.possibleRecurring.filter((item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object').slice(0, 4).map((item) => ({
         name: String(item.name || '').slice(0, 80),
         currency: item.currency === 'LBP' ? 'LBP' : 'USD',
         amount: Number(item.amount) || 0,
