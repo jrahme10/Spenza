@@ -22,7 +22,20 @@ For a transaction draft:
 - Keep title short and descriptive. Put extra details in note.
 - If the request is ambiguous about whether to record a transaction, ask a clarification and set action to none.
 - Your response is a draft for user review; the user must review and save it in the normal transaction form.
-Reply in the same language as the user (Lebanese Arabic when they use Lebanese Arabic). Keep answers concise, useful and friendly.
+Language rules:
+- Detect the language of the user's latest message and reply in that same language.
+- If the user writes in English, answer in English only.
+- If the user writes in Arabic (including Lebanese Arabic written in Arabic script or Arabizi), answer in Arabic; use natural Lebanese Arabic when appropriate.
+- Voice transcripts follow the same rule: respond in the language of the transcribed words.
+- Do not switch languages just because the app interface, financial data, or category names are in English.
+Keep answers concise, useful and friendly.
+
+Monthly all-wallet reporting rules:
+- The supplied financialContext scope is all wallets/accounts, not only the currently selected wallet.
+- When asked how much was spent this month, use spentByCurrency and include every wallet.
+- Never add USD and LBP figures together. If both exist, report separate totals for each currency.
+- Use previousMonthSpentByCurrency only for comparisons; use incomeByCurrency and netByCurrency only when relevant.
+- State the month from financialContext.month. Never infer or invent missing transactions.
 Return ONLY valid JSON matching the response schema.
 `
 
@@ -79,17 +92,30 @@ Deno.serve(async (req) => {
     const categories = Array.isArray(payload?.categories) ? payload.categories.filter((v: unknown) => typeof v === 'string').slice(0, 80) : ['Other']
     const defaultCurrency = payload?.defaultCurrency === 'LBP' ? 'LBP' : 'USD'
     const today = typeof payload?.today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(payload.today) ? payload.today : new Date().toISOString().slice(0, 10)
+    const safeMoneyRows = (value: unknown) => Array.isArray(value) ? value.slice(0, 8).map((item: Record<string, unknown>) => ({
+      currency: item.currency === 'LBP' ? 'LBP' : 'USD',
+      amount: Number(item.amount) || 0,
+    })) : []
     const safeContext = {
-      currency: context.currency === 'LBP' ? 'LBP' : 'USD',
+      scope: context.scope === 'all wallets' ? 'all wallets' : 'selected wallet',
+      walletCount: Math.max(0, Math.min(100, Number(context.walletCount) || 0)),
       month: typeof context.month === 'string' ? context.month.slice(0, 7) : '',
-      spent: Number(context.spent) || 0,
-      previousMonthSpent: Number(context.previousMonthSpent) || 0,
-      income: Number(context.income) || 0,
-      net: Number(context.net) || 0,
-      dailyAverage: Number(context.dailyAverage) || 0,
-      monthEndEstimate: Number(context.monthEndEstimate) || 0,
-      topCategories: Array.isArray(context.topCategories) ? context.topCategories.slice(0, 5) : [],
-      possibleRecurring: Array.isArray(context.possibleRecurring) ? context.possibleRecurring.slice(0, 4) : [],
+      spentByCurrency: safeMoneyRows(context.spentByCurrency),
+      previousMonthSpentByCurrency: safeMoneyRows(context.previousMonthSpentByCurrency),
+      incomeByCurrency: safeMoneyRows(context.incomeByCurrency),
+      netByCurrency: safeMoneyRows(context.netByCurrency),
+      dailyAverageByCurrency: safeMoneyRows(context.dailyAverageByCurrency),
+      monthEndEstimateByCurrency: safeMoneyRows(context.monthEndEstimateByCurrency),
+      topCategories: Array.isArray(context.topCategories) ? context.topCategories.slice(0, 5).map((item: Record<string, unknown>) => ({
+        currency: item.currency === 'LBP' ? 'LBP' : 'USD',
+        name: String(item.name || '').slice(0, 80),
+        amount: Number(item.amount) || 0,
+      })) : [],
+      possibleRecurring: Array.isArray(context.possibleRecurring) ? context.possibleRecurring.slice(0, 4).map((item: Record<string, unknown>) => ({
+        name: String(item.name || '').slice(0, 80),
+        currency: item.currency === 'LBP' ? 'LBP' : 'USD',
+        amount: Number(item.amount) || 0,
+      })) : [],
     }
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent', {
       method: 'POST',
