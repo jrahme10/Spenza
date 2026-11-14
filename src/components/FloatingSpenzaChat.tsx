@@ -14,6 +14,7 @@ export type ChatTransactionDraft = {
 }
 type Props = {
   wallet?: Wallet
+  wallets: Wallet[]
   transactions: Transaction[]
   date: string
   categories: string[]
@@ -25,7 +26,7 @@ const previousMonth = (d: string) => { const x = new Date(`${d.slice(0, 7)}-01T1
 const merchant = (t: Transaction) => (t.title || t.note || t.category || 'Transaction').trim()
 const formatAmount = (amount: number, currency: Currency) => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: currency === 'LBP' ? 0 : 2 }).format(amount)
 
-export default function FloatingSpenzaChat({ wallet, transactions, date, categories, onReviewTransaction }: Props) {
+export default function FloatingSpenzaChat({ wallet, wallets, transactions, date, categories, onReviewTransaction }: Props) {
   const [open, setOpen] = useState(false)
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
@@ -128,22 +129,70 @@ export default function FloatingSpenzaChat({ wallet, transactions, date, categor
     }
   }
   const context = useMemo(() => {
-    if (!wallet) return {}
     const current = monthKey(date), previous = previousMonth(date)
-    const own = transactions.filter(t => t.walletId === wallet.id)
-    const expenses = own.filter(t => t.type === 'expense' && monthKey(t.date) === current)
-    const prev = own.filter(t => t.type === 'expense' && monthKey(t.date) === previous)
-    const income = own.filter(t => t.type === 'income' && monthKey(t.date) === current).reduce((s,t) => s+t.amount,0)
-    const spent = expenses.reduce((s,t) => s+t.amount,0)
+    const walletCurrencies = new Map(wallets.map(item => [item.id, item.currency]))
+    const currencyOf = (transaction: Transaction): Currency => walletCurrencies.get(transaction.walletId) || (wallet?.id === transaction.walletId ? wallet.currency : 'USD')
+    const sumByCurrency = (items: Transaction[]) => {
+      const totals = new Map<Currency, number>()
+      items.forEach(item => {
+        const currency = currencyOf(item)
+        totals.set(currency, (totals.get(currency) || 0) + item.amount)
+      })
+      return [...totals.entries()].map(([currency, amount]) => ({ currency, amount: Math.round(amount * (currency === 'LBP' ? 1 : 100)) / (currency === 'LBP' ? 1 : 100) }))
+    }
+    const currentMonthTransactions = transactions.filter(item => monthKey(item.date) === current)
+    const previousMonthTransactions = transactions.filter(item => monthKey(item.date) === previous)
+    const expenses = currentMonthTransactions.filter(item => item.type === 'expense')
+    const previousExpenses = previousMonthTransactions.filter(item => item.type === 'expense')
+    const incomes = currentMonthTransactions.filter(item => item.type === 'income')
+    const spentByCurrency = sumByCurrency(expenses)
+    const previousMonthSpentByCurrency = sumByCurrency(previousExpenses)
+    const incomeByCurrency = sumByCurrency(incomes)
+    const netByCurrency = [...new Set([...spentByCurrency, ...incomeByCurrency].map(item => item.currency))].map(currency => ({
+      currency,
+      amount: (incomeByCurrency.find(item => item.currency === currency)?.amount || 0) - (spentByCurrency.find(item => item.currency === currency)?.amount || 0),
+    }))
     const categoryTotals = new Map<string, number>()
-    expenses.forEach(t => categoryTotals.set(t.category,(categoryTotals.get(t.category)||0)+t.amount))
-    const days = new Date(Number(current.slice(0,4)),Number(current.slice(5,7)),0).getDate()
-    const elapsed = Math.max(1,Math.min(days,current===monthKey(date)?Number(date.slice(8,10)):days))
-    const groups = new Map<string,Transaction[]>()
-    own.filter(t=>t.type==='expense').forEach(t=>{const k=merchant(t).toLowerCase();groups.set(k,[...(groups.get(k)||[]),t])})
-    const recurring = [...groups.values()].filter(items=>items.length>=2).filter(items=>{const a=items[items.length-2],b=items[items.length-1];const gap=Math.abs((new Date(b.date).getTime()-new Date(a.date).getTime())/86400000);return gap>=25&&gap<=35}).slice(0,4).map(items=>({name:merchant(items[items.length-1]),amount:items[items.length-1].amount}))
-    return {currency:wallet.currency,month:current,spent,previousMonthSpent:prev.reduce((s,t)=>s+t.amount,0),income,net:income-spent,dailyAverage:spent/elapsed,monthEndEstimate:spent/elapsed*days,topCategories:[...categoryTotals.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5).map(([name,amount])=>({name,amount})),possibleRecurring:recurring}
-  },[wallet,transactions,date])
+    expenses.forEach(item => {
+      const key = currencyOf(item) + ':' + item.category
+      categoryTotals.set(key, (categoryTotals.get(key) || 0) + item.amount)
+    })
+    const days = new Date(Number(current.slice(0,4)), Number(current.slice(5,7)), 0).getDate()
+    const elapsed = Math.max(1, Math.min(days, current === monthKey(date) ? Number(date.slice(8,10)) : days))
+    const dailyAverageByCurrency = spentByCurrency.map(item => ({ currency: item.currency, amount: item.amount / elapsed }))
+    const monthEndEstimateByCurrency = spentByCurrency.map(item => ({ currency: item.currency, amount: item.amount / elapsed * days }))
+    const recurringGroups = new Map<string, Transaction[]>()
+    transactions.filter(item => item.type === 'expense').forEach(item => {
+      const key = currencyOf(item) + ':' + merchant(item).toLowerCase()
+      recurringGroups.set(key, [...(recurringGroups.get(key) || []), item])
+    })
+    const possibleRecurring = [...recurringGroups.entries()].filter(([, items]) => items.length >= 2).filter(([, items]) => {
+      const sorted = [...items].sort((a,b) => a.date.localeCompare(b.date))
+      const a = sorted[sorted.length - 2], b = sorted[sorted.length - 1]
+      const gap = Math.abs((new Date(b.date).getTime() - new Date(a.date).getTime()) / 86400000)
+      return gap >= 25 && gap <= 35
+    }).slice(0,4).map(([key, items]) => ({
+      name: merchant(items[items.length - 1]),
+      currency: key.split(':')[0],
+      amount: items[items.length - 1].amount,
+    }))
+    return {
+      scope: 'all wallets',
+      walletCount: wallets.length,
+      month: current,
+      spentByCurrency,
+      previousMonthSpentByCurrency,
+      incomeByCurrency,
+      netByCurrency,
+      dailyAverageByCurrency,
+      monthEndEstimateByCurrency,
+      topCategories: [...categoryTotals.entries()].sort((a,b) => b[1] - a[1]).slice(0,5).map(([key, amount]) => {
+        const separator = key.indexOf(':')
+        return { currency: key.slice(0, separator), name: key.slice(separator + 1), amount }
+      }),
+      possibleRecurring,
+    }
+  }, [wallet, wallets, transactions, date])
   const send = async () => {
     const q=question.trim(); if(!q||asking)return
     const supabase=getSupabaseClient()
