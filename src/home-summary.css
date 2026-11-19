@@ -40,7 +40,7 @@
   color: var(--accent) !important;
 }
 .homeCashflowSummary article:nth-child(2) strong {
-  color: #fff !important;
+  color: var(--danger) !important;
 }
 .homeCashflowSummary article:last-child strong {
   font-weight: 800;
